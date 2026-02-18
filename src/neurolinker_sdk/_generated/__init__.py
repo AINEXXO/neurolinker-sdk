@@ -47,34 +47,34 @@ __all__ = [
 ]
 
 # import apis into sdk package
-from neurolinker_sdk_gen.api.default_api import DefaultApi as DefaultApi
+from neurolinker_sdk._generated.api.default_api import DefaultApi as DefaultApi
 
 # import ApiClient
-from neurolinker_sdk_gen.api_response import ApiResponse as ApiResponse
-from neurolinker_sdk_gen.api_client import ApiClient as ApiClient
-from neurolinker_sdk_gen.configuration import Configuration as Configuration
-from neurolinker_sdk_gen.exceptions import OpenApiException as OpenApiException
-from neurolinker_sdk_gen.exceptions import ApiTypeError as ApiTypeError
-from neurolinker_sdk_gen.exceptions import ApiValueError as ApiValueError
-from neurolinker_sdk_gen.exceptions import ApiKeyError as ApiKeyError
-from neurolinker_sdk_gen.exceptions import ApiAttributeError as ApiAttributeError
-from neurolinker_sdk_gen.exceptions import ApiException as ApiException
+from neurolinker_sdk._generated.api_response import ApiResponse as ApiResponse
+from neurolinker_sdk._generated.api_client import ApiClient as ApiClient
+from neurolinker_sdk._generated.configuration import Configuration as Configuration
+from neurolinker_sdk._generated.exceptions import OpenApiException as OpenApiException
+from neurolinker_sdk._generated.exceptions import ApiTypeError as ApiTypeError
+from neurolinker_sdk._generated.exceptions import ApiValueError as ApiValueError
+from neurolinker_sdk._generated.exceptions import ApiKeyError as ApiKeyError
+from neurolinker_sdk._generated.exceptions import ApiAttributeError as ApiAttributeError
+from neurolinker_sdk._generated.exceptions import ApiException as ApiException
 
 # import models into sdk package
-from neurolinker_sdk_gen.models.create_pdf_request import CreatePDFRequest as CreatePDFRequest
-from neurolinker_sdk_gen.models.create_pdf_response import CreatePDFResponse as CreatePDFResponse
-from neurolinker_sdk_gen.models.document_ids_request import DocumentIdsRequest as DocumentIdsRequest
-from neurolinker_sdk_gen.models.document_images_response import DocumentImagesResponse as DocumentImagesResponse
-from neurolinker_sdk_gen.models.document_info import DocumentInfo as DocumentInfo
-from neurolinker_sdk_gen.models.document_result_response import DocumentResultResponse as DocumentResultResponse
-from neurolinker_sdk_gen.models.document_status_response import DocumentStatusResponse as DocumentStatusResponse
-from neurolinker_sdk_gen.models.http_validation_error import HTTPValidationError as HTTPValidationError
-from neurolinker_sdk_gen.models.job import Job as Job
-from neurolinker_sdk_gen.models.job_performance import JobPerformance as JobPerformance
-from neurolinker_sdk_gen.models.job_submission import JobSubmission as JobSubmission
-from neurolinker_sdk_gen.models.location_inner import LocationInner as LocationInner
-from neurolinker_sdk_gen.models.process_pdfs_response import ProcessPDFsResponse as ProcessPDFsResponse
-from neurolinker_sdk_gen.models.request_status_response import RequestStatusResponse as RequestStatusResponse
-from neurolinker_sdk_gen.models.tasks_response import TasksResponse as TasksResponse
-from neurolinker_sdk_gen.models.validation_error import ValidationError as ValidationError
+from neurolinker_sdk._generated.models.create_pdf_request import CreatePDFRequest as CreatePDFRequest
+from neurolinker_sdk._generated.models.create_pdf_response import CreatePDFResponse as CreatePDFResponse
+from neurolinker_sdk._generated.models.document_ids_request import DocumentIdsRequest as DocumentIdsRequest
+from neurolinker_sdk._generated.models.document_images_response import DocumentImagesResponse as DocumentImagesResponse
+from neurolinker_sdk._generated.models.document_info import DocumentInfo as DocumentInfo
+from neurolinker_sdk._generated.models.document_result_response import DocumentResultResponse as DocumentResultResponse
+from neurolinker_sdk._generated.models.document_status_response import DocumentStatusResponse as DocumentStatusResponse
+from neurolinker_sdk._generated.models.http_validation_error import HTTPValidationError as HTTPValidationError
+from neurolinker_sdk._generated.models.job import Job as Job
+from neurolinker_sdk._generated.models.job_performance import JobPerformance as JobPerformance
+from neurolinker_sdk._generated.models.job_submission import JobSubmission as JobSubmission
+from neurolinker_sdk._generated.models.location_inner import LocationInner as LocationInner
+from neurolinker_sdk._generated.models.process_pdfs_response import ProcessPDFsResponse as ProcessPDFsResponse
+from neurolinker_sdk._generated.models.request_status_response import RequestStatusResponse as RequestStatusResponse
+from neurolinker_sdk._generated.models.tasks_response import TasksResponse as TasksResponse
+from neurolinker_sdk._generated.models.validation_error import ValidationError as ValidationError
 

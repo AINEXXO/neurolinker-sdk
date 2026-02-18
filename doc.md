@@ -23,13 +23,14 @@ chmod +x scripts/generate.sh
 uv run ruff format .
 uv run ruff check .
 
-uv run pytest -q
+uv run pytest -q # è come uv run pytest -q tests
+
 
 ```
 
 # Workflow
 
-Ogni volta che cambia l’API:
+Ogni volta che cambia l’API gli step da fare sono:
 
 aggiorni openapi/openapi.json (anche manualmente)
 

@@ -7,7 +7,9 @@ authors = [
     { name = "LeoMarzoli", email = "leo.marzoli@ainexxo.com" }
 ]
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "pydantic>=2.12.5",
+]
 
 [project.scripts]
 neurolinker-sdk = "neurolinker_sdk:main"
@@ -19,7 +21,10 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
+    "python-dateutil>=2.9.0.post0",
+    "python-dotenv>=1.2.1",
     "ruff>=0.15.1",
+    "urllib3>=2.6.3",
 ]
 
 [tool.ruff]
@@ -28,4 +33,3 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B"]
-

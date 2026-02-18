@@ -19,7 +19,7 @@ import json
 
 from pydantic import BaseModel, ConfigDict
 from typing import Any, ClassVar, Dict, List, Optional
-from neurolinker_sdk_gen.models.validation_error import ValidationError
+from neurolinker_sdk._generated.models.validation_error import ValidationError
 from typing import Optional, Set
 from typing_extensions import Self
 

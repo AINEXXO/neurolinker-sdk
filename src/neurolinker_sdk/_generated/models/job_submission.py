@@ -20,7 +20,7 @@ import json
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
-from neurolinker_sdk_gen.models.document_info import DocumentInfo
+from neurolinker_sdk._generated.models.document_info import DocumentInfo
 from typing import Optional, Set
 from typing_extensions import Self
 

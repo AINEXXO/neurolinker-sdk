@@ -19,7 +19,7 @@ import json
 
 from pydantic import BaseModel, ConfigDict, StrictStr
 from typing import Any, ClassVar, Dict, List
-from neurolinker_sdk_gen.models.location_inner import LocationInner
+from neurolinker_sdk._generated.models.location_inner import LocationInner
 from typing import Optional, Set
 from typing_extensions import Self
 

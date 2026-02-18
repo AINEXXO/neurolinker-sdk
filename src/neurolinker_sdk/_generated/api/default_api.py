@@ -17,21 +17,21 @@ from typing_extensions import Annotated
 
 from pydantic import StrictBytes, StrictStr
 from typing import Any, List, Optional, Tuple, Union
-from neurolinker_sdk_gen.models.create_pdf_request import CreatePDFRequest
-from neurolinker_sdk_gen.models.create_pdf_response import CreatePDFResponse
-from neurolinker_sdk_gen.models.document_ids_request import DocumentIdsRequest
-from neurolinker_sdk_gen.models.document_images_response import DocumentImagesResponse
-from neurolinker_sdk_gen.models.document_result_response import DocumentResultResponse
-from neurolinker_sdk_gen.models.document_status_response import DocumentStatusResponse
-from neurolinker_sdk_gen.models.job import Job
-from neurolinker_sdk_gen.models.job_submission import JobSubmission
-from neurolinker_sdk_gen.models.process_pdfs_response import ProcessPDFsResponse
-from neurolinker_sdk_gen.models.request_status_response import RequestStatusResponse
-from neurolinker_sdk_gen.models.tasks_response import TasksResponse
+from neurolinker_sdk._generated.models.create_pdf_request import CreatePDFRequest
+from neurolinker_sdk._generated.models.create_pdf_response import CreatePDFResponse
+from neurolinker_sdk._generated.models.document_ids_request import DocumentIdsRequest
+from neurolinker_sdk._generated.models.document_images_response import DocumentImagesResponse
+from neurolinker_sdk._generated.models.document_result_response import DocumentResultResponse
+from neurolinker_sdk._generated.models.document_status_response import DocumentStatusResponse
+from neurolinker_sdk._generated.models.job import Job
+from neurolinker_sdk._generated.models.job_submission import JobSubmission
+from neurolinker_sdk._generated.models.process_pdfs_response import ProcessPDFsResponse
+from neurolinker_sdk._generated.models.request_status_response import RequestStatusResponse
+from neurolinker_sdk._generated.models.tasks_response import TasksResponse
 
-from neurolinker_sdk_gen.api_client import ApiClient, RequestSerialized
-from neurolinker_sdk_gen.api_response import ApiResponse
-from neurolinker_sdk_gen.rest import RESTResponseType
+from neurolinker_sdk._generated.api_client import ApiClient, RequestSerialized
+from neurolinker_sdk._generated.api_response import ApiResponse
+from neurolinker_sdk._generated.rest import RESTResponseType
 
 
 class DefaultApi:

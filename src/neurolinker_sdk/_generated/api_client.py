@@ -26,11 +26,11 @@ from urllib.parse import quote
 from typing import Tuple, Optional, List, Dict, Union
 from pydantic import SecretStr
 
-from neurolinker_sdk_gen.configuration import Configuration
-from neurolinker_sdk_gen.api_response import ApiResponse, T as ApiResponseT
-import neurolinker_sdk_gen.models
-from neurolinker_sdk_gen import rest
-from neurolinker_sdk_gen.exceptions import (
+from neurolinker_sdk._generated.configuration import Configuration
+from neurolinker_sdk._generated.api_response import ApiResponse, T as ApiResponseT
+import neurolinker_sdk._generated.models
+from neurolinker_sdk._generated import rest
+from neurolinker_sdk._generated.exceptions import (
     ApiValueError,
     ApiException,
     BadRequestException,
@@ -455,7 +455,7 @@ class ApiClient:
             if klass in self.NATIVE_TYPES_MAPPING:
                 klass = self.NATIVE_TYPES_MAPPING[klass]
             else:
-                klass = getattr(neurolinker_sdk_gen.models, klass)
+                klass = getattr(neurolinker_sdk._generated.models, klass)
 
         if klass in self.PRIMITIVE_TYPES:
             return self.__deserialize_primitive(data, klass)
