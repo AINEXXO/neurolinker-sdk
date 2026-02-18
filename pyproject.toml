@@ -1,0 +1,23 @@
+[project]
+name = "neurolinker-sdk"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "LeoMarzoli", email = "leo.marzoli@ainexxo.com" }
+]
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+neurolinker-sdk = "neurolinker_sdk:main"
+
+[build-system]
+requires = ["uv_build>=0.8.3,<0.9.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+    "ruff>=0.15.1",
+]
