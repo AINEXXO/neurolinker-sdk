@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "servers": [
         {
-            "url": "https://dev.neurolinker.ainexxo.com"
+            "url": "https://dev.ainexxo.com/neurolinker"
         }
     ],
     "info": {
