@@ -1,6 +1,9 @@
-"""
-NeuroLinker SDK (manual layer).
+from .client import NeuroLinker, AsyncNeuroLinker
+from .errors import NeuroLinkerAPIError, NeuroLinkerConfigError
 
-For now it re-exports the generated OpenAPI client.
-A future wrapper will live here without touching generated code.
-"""
+__all__ = [
+    "NeuroLinker",
+    "AsyncNeuroLinker",
+    "NeuroLinkerAPIError",
+    "NeuroLinkerConfigError",
+]
