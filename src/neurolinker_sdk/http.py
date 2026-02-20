@@ -62,7 +62,7 @@ def _coerce_files(
 def _encode_form_payload(urls: Optional[list[str]], alias: Optional[str]) -> str:
     payload: Dict[str, Any] = {}
     if urls:
-        payload["urls"] = urls
+        payload["documents_url"] = urls
     if alias:
         payload["alias"] = alias
     return json.dumps(payload)
