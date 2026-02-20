@@ -4,12 +4,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-BASE_URL = os.getenv("NEUROLINKER_BASE_URL")
 TOKEN = os.getenv("NEUROLINKER_TOKEN")
 
 pytestmark = pytest.mark.skipif(
-    not BASE_URL or not TOKEN,
-    reason="Set NEUROLINKER_BASE_URL and NEUROLINKER_TOKEN to run integration tests.",
+    not TOKEN,
+    reason="Set NEUROLINKER_TOKEN to run integration tests.",
 )
 
 def test_integration_list_tasks():
@@ -17,7 +16,7 @@ def test_integration_list_tasks():
     from neurolinker_sdk._generated.api_client import ApiClient
     from neurolinker_sdk._generated.api.default_api import DefaultApi
 
-    cfg = Configuration(host=BASE_URL)
+    cfg = Configuration()
     cfg.access_token = TOKEN
 
     with ApiClient(cfg) as client:

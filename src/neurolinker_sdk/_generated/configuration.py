@@ -192,7 +192,7 @@ class Configuration:
     ) -> None:
         """Constructor
         """
-        self._base_path = "https://dev.neurolinker.ainexxo.com" if host is None else host
+        self._base_path = "https://dev.ainexxo.com/neurolinker" if host is None else host
         """Default Base url
         """
         self.server_index = 0 if server_index is None and host is None else server_index
@@ -523,7 +523,7 @@ class Configuration:
         """
         return [
             {
-                'url': "https://dev.neurolinker.ainexxo.com",
+                'url': "https://dev.ainexxo.com/neurolinker",
                 'description': "No description provided",
             }
         ]

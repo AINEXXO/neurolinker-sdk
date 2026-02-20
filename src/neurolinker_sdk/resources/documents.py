@@ -20,7 +20,7 @@ class DocumentsResource:
         _raise_for_status(resp)
         return resp.json()
 
-    def markdown(self, document_ids: List[str]) -> Dict[str, Any]: #TODO: ma tutti questi tipi? Servono? l'api non è solo /api/v1/documents/{document_id} che è il path del documento di tipo string?
+    def markdown(self, document_ids: List[str]) -> Dict[str, Any]:
         return self._post_ids("/api/v1/documents/markdown", document_ids)
 
     def json(self, document_ids: List[str]) -> Dict[str, Any]:

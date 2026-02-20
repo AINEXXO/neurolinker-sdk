@@ -4,17 +4,19 @@ import pytest
 from neurolinker_sdk import AsyncNeuroLinker
 
 
-BASE_URL = os.getenv("NEUROLINKER_BASE_URL")
 TOKEN = os.getenv("NEUROLINKER_TOKEN")
 
 pytestmark = pytest.mark.skipif(
-    not BASE_URL or not TOKEN,
-    reason="Set NEUROLINKER_BASE_URL and NEUROLINKER_TOKEN.",
+    not TOKEN,
+    reason="Set NEUROLINKER_TOKEN to run integration tests.",
 )
 
 
 @pytest.mark.asyncio
-async def test_wrapper_tasks_list_async():
+async def test_wrapper_tasks_list_async_uses_default_base_url_when_missing(monkeypatch):
+    monkeypatch.delenv("NEUROLINKER_BASE_URL", raising=False)
+
     async with AsyncNeuroLinker.from_env() as client:
         data = await client.tasks.list()
+
     assert data is not None
