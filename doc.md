@@ -39,3 +39,12 @@ ricordati di avere docker installato o aver avviato docker desktop
 poi fai punto 1 2 e 3.
 
 commit del cambiamento generato + eventuali aggiustamenti.
+
+
+## Quando si vuole fare una nuova release
+
+1. Usare il comando `uv run pytest` per fare il test
+2. (opzionale) Usare il comando `uv run ruff format .` per formattare il codice
+3. (opzionale) Usare il comando `uv run ruff check .` per fare il check
+4. Usare il comando `uv version --bump patch` per incrementare la versione
+5. Merge su main per attivare la pipeline di release.

@@ -27,6 +27,8 @@ dev = [
     "python-dotenv>=1.2.1",
     "ruff>=0.15.1",
     "urllib3>=2.6.3",
+    "httpx>=0.28.1",
+    "pydantic>=2.12.5",
 ]
 
 [tool.ruff]

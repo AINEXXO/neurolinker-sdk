@@ -1,0 +1,52 @@
+name: Publish SDK
+
+on:
+  push:
+    branches: [main]   # ogni push su main (tipicamente merge di dev)
+
+  # opzionale: per lanciare manualmente
+  workflow_dispatch: {}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    # opzionale ma carino: ambiente protetto "pypi"
+    environment: pypi
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install project (dev dependencies)
+        run: uv sync --locked --dev
+
+      - name: Run tests
+        run: uv run pytest
+
+      - name: Show package version
+        run: uv version
+
+      - name: Build distribution
+        run: uv build
+
+      - name: Publish to PyPI
+        env:
+          # secret definito prima
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          # uv publish usa UV_PUBLISH_TOKEN come token PyPI
+          uv publish
