@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  # push:
+  #   branches: [main, dev]
+  # pull_request:
+  #   branches: [main, dev]
+  workflow_dispatch: {}
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          # use the same version of local
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install project (dev dependencies)
+        run: uv sync --locked --dev
+
+      # optional: if you want to create a .env with some secrets
+      - name: Create .env from GitHub secrets
+        run: |
+          cat <<EOF > .env
+          NEUROLINKER_BASE_URL=${{ secrets.NEUROLINKER_BASE_URL }}
+          NEUROLINKER_TOKEN=${{ secrets.NEUROLINKER_TOKEN }}
+          NEUROLINKER_TEST_PDF_URL=${{ secrets.NEUROLINKER_TEST_PDF_URL }}
+          EOF
+
+      - name: Run tests
+        run: uv run pytest

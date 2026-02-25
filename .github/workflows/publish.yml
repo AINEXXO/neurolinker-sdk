@@ -1,0 +1,98 @@
+name: Release & Publish
+
+on:
+  # Solo manuale, da GitHub Actions
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: "Versione da rilasciare (vuoto = usa quella in pyproject.toml)"
+        required: false
+        default: ""
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write    # serve per pushare il tag
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Importante: ci serve tutta la history per i tag
+          fetch-depth: 0
+
+      - name: Ensure we are on main
+        run: |
+          CURRENT_BRANCH="${GITHUB_REF#refs/heads/}"
+          echo "Current ref: $GITHUB_REF (branch: $CURRENT_BRANCH)"
+          if [ "$CURRENT_BRANCH" != "main" ]; then
+            echo "Questo workflow va eseguito solo su main (branch attuale: $CURRENT_BRANCH)."
+            exit 1
+          fi
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Install project (dev dependencies)
+        run: uv sync --locked --dev
+
+      - name: Run tests
+        run: uv run pytest
+
+      - name: Determine version
+        id: get_version
+        run: |
+          echo "Leggo la versione da pyproject.toml..."
+          PYPROJECT_VERSION=$(python - <<'PY'
+          import tomllib, pathlib
+          data = tomllib.loads(pathlib.Path("pyproject.toml").read_text("utf-8"))
+          print(data["project"]["version"])
+          PY
+          )
+          echo "Versione trovata: $PYPROJECT_VERSION"
+          echo "pyproject_version=$PYPROJECT_VERSION" >> "$GITHUB_OUTPUT"
+
+          INPUT_VERSION="${{ github.event.inputs.release_version }}"
+          if [ -n "$INPUT_VERSION" ] && [ "$INPUT_VERSION" != "$PYPROJECT_VERSION" ]; then
+            echo "ERRORE: versione di input ($INPUT_VERSION) diversa da quella in pyproject.toml ($PYPROJECT_VERSION)"
+            exit 1
+          fi
+
+          echo "Userò la versione: $PYPROJECT_VERSION"
+          echo "release_version=$PYPROJECT_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Create and push git tag
+        env:
+          VERSION: ${{ steps.get_version.outputs.release_version }}
+        run: |
+          TAG="v$VERSION"
+          echo "Creo il tag $TAG per commit $GITHUB_SHA"
+
+          # Verifica se il tag esiste già sul remoto
+          if git ls-remote --tags origin | grep -q "refs/tags/$TAG"; then
+            echo "ERRORE: il tag $TAG esiste già su origin. Interrompo."
+            exit 1
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git tag "$TAG" "$GITHUB_SHA"
+          git push origin "$TAG"
+
+      - name: Build distribution
+        run: uv build
+
+      - name: Publish to PyPI
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        run: uv publish

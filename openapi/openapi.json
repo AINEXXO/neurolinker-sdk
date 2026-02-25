@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "servers": [
         {
-            "url": "https://dev.neurolinker.ainexxo.com"
+            "url": "https://dev.ainexxo.com/neurolinker"
         }
     ],
     "info": {
@@ -262,7 +262,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/DocumentIdsRequest"
+                                "$ref": "#/components/schemas/DocumentContentFilterRequest"
                             }
                         }
                     },
@@ -306,7 +306,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/DocumentIdsRequest"
+                                "$ref": "#/components/schemas/DocumentContentFilterRequest"
                             }
                         }
                     },
@@ -434,6 +434,94 @@
                 "summary": "Get Documents Summary",
                 "description": "Get document summaries for specified documents",
                 "operationId": "get_documents_summary_api_v1_documents_summary_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DocumentIdsRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DocumentResultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/documents/section-summaries": {
+            "post": {
+                "summary": "Get Documents Section Summaries",
+                "description": "Get section summaries for specified documents",
+                "operationId": "get_documents_section_summaries_api_v1_documents_section_summaries_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DocumentIdsRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DocumentResultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/documents/section-summary": {
+            "post": {
+                "summary": "Get Documents Section Summary",
+                "description": "Get section-based document summaries for specified documents",
+                "operationId": "get_documents_section_summary_api_v1_documents_section_summary_post",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -639,7 +727,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/DocumentIdsRequest"
+                                "$ref": "#/components/schemas/DocumentContentFilterRequest"
                             }
                         }
                     },
@@ -683,7 +771,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/DocumentIdsRequest"
+                                "$ref": "#/components/schemas/DocumentContentFilterRequest"
                             }
                         }
                     },
@@ -850,6 +938,94 @@
                 ]
             }
         },
+        "/api/v1/mcp/documents/section-summaries": {
+            "post": {
+                "summary": "Get Documents Section Summaries",
+                "description": "Get section summaries for specified documents",
+                "operationId": "get_documents_section_summaries_api_v1_mcp_documents_section_summaries_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DocumentIdsRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DocumentResultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/mcp/documents/section-summary": {
+            "post": {
+                "summary": "Get Documents Section Summary",
+                "description": "Get section-based document summaries for specified documents",
+                "operationId": "get_documents_section_summary_api_v1_mcp_documents_section_summary_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DocumentIdsRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DocumentResultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
         "/api/v1/mcp/create-pdf": {
             "post": {
                 "summary": "Create Pdf",
@@ -872,6 +1048,50 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/CreatePDFResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/mcp/make-zip": {
+            "post": {
+                "summary": "Make Zip",
+                "description": "Create a ZIP archive for a processed request and return a signed download URL.\n\nThin wrapper around the Firebase callable Cloud Function `makeZip`.\nThis endpoint is designed to be SDK-friendly: it accepts a simple JSON body\nand returns a minimal, stable JSON response.",
+                "operationId": "make_zip_api_v1_mcp_make_zip_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MakeZipRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MakeZipResponse"
                                 }
                             }
                         }
@@ -951,6 +1171,16 @@
                 "type": "object",
                 "title": "Body_process_pdfs_api_v1_mcp_process_pdfs_post"
             },
+            "ContentType": {
+                "type": "string",
+                "enum": [
+                    "text",
+                    "formula",
+                    "tables",
+                    "images"
+                ],
+                "title": "ContentType"
+            },
             "CreatePDFRequest": {
                 "properties": {
                     "content": {
@@ -1011,6 +1241,38 @@
                     "message"
                 ],
                 "title": "CreatePDFResponse"
+            },
+            "DocumentContentFilterRequest": {
+                "properties": {
+                    "document_ids": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Document Ids",
+                        "description": "List of document IDs to retrieve"
+                    },
+                    "content_types": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/ContentType"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Content Types",
+                        "description": "Optional content filters. Allowed values: text, formula, tables, images"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "document_ids"
+                ],
+                "title": "DocumentContentFilterRequest"
             },
             "DocumentIdsRequest": {
                 "properties": {
@@ -1426,6 +1688,60 @@
                     "documents"
                 ],
                 "title": "JobSubmission"
+            },
+            "MakeZipRequest": {
+                "properties": {
+                    "request_id": {
+                        "type": "string",
+                        "title": "Request Id"
+                    },
+                    "document_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Document Id"
+                    },
+                    "local_images": {
+                        "type": "boolean",
+                        "title": "Local Images",
+                        "default": false
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "request_id"
+                ],
+                "title": "MakeZipRequest",
+                "description": "Request body for creating a ZIP archive of a processed request.\n\nThis mirrors the parameters expected by the Firebase `makeZip` function:\n- jobUid: mapped from `request_id`\n- documentUid: mapped from `document_id`\n- localImages: rewritten from `local_images`"
+            },
+            "MakeZipResponse": {
+                "properties": {
+                    "success": {
+                        "type": "boolean",
+                        "title": "Success"
+                    },
+                    "url": {
+                        "type": "string",
+                        "title": "Url"
+                    },
+                    "message": {
+                        "type": "string",
+                        "title": "Message"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "success",
+                    "url",
+                    "message"
+                ],
+                "title": "MakeZipResponse",
+                "description": "Response for the make-zip endpoint.\n\nThe backend returns a short-lived signed URL that can be used to\ndownload the ZIP directly from Cloud Storage."
             },
             "ProcessPDFsResponse": {
                 "properties": {
