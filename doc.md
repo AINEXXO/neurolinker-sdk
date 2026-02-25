@@ -34,6 +34,8 @@ Ogni volta che cambia l’API gli step da fare sono:
 
 aggiorni openapi/openapi.json (anche manualmente)
 
+ricordati di avere docker installato o aver avviato docker desktop
+
 poi fai punto 1 2 e 3.
 
 commit del cambiamento generato + eventuali aggiustamenti.

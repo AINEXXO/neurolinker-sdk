@@ -9,6 +9,7 @@ from .resources.tasks import TasksResource, AsyncTasksResource
 from .resources.status import StatusResource, AsyncStatusResource
 from .resources.documents import DocumentsResource, AsyncDocumentsResource
 from .resources.extract import ExtractResource, AsyncExtractResource
+from .resources.zip import ZipResource, AsyncZipResource
 
 
 class NeuroLinker:
@@ -37,6 +38,7 @@ class NeuroLinker:
         self.status = StatusResource(self._base_url, self._token, self._client)
         self.documents = DocumentsResource(self._base_url, self._token, self._client)
         self.extract = ExtractResource(self._base_url, self._token, self._client)
+        self.zip = ZipResource(self._base_url, self._token, self._client)
 
     @staticmethod
     def from_env(timeout_s: float = 30.0) -> "NeuroLinker":
@@ -78,6 +80,7 @@ class AsyncNeuroLinker:
         self.status = AsyncStatusResource(self._base_url, self._token, self._client)
         self.documents = AsyncDocumentsResource(self._base_url, self._token, self._client)
         self.extract = AsyncExtractResource(self._base_url, self._token, self._client)
+        self.zip = AsyncZipResource(self._base_url, self._token, self._client)
 
     @staticmethod
     def from_env(timeout_s: float = 30.0) -> "AsyncNeuroLinker":

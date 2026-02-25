@@ -40,6 +40,8 @@ __all__ = [
     "JobPerformance",
     "JobSubmission",
     "LocationInner",
+    "MakeZipRequest",
+    "MakeZipResponse",
     "ProcessPDFsResponse",
     "RequestStatusResponse",
     "TasksResponse",
@@ -73,6 +75,8 @@ from neurolinker_sdk._generated.models.job import Job as Job
 from neurolinker_sdk._generated.models.job_performance import JobPerformance as JobPerformance
 from neurolinker_sdk._generated.models.job_submission import JobSubmission as JobSubmission
 from neurolinker_sdk._generated.models.location_inner import LocationInner as LocationInner
+from neurolinker_sdk._generated.models.make_zip_request import MakeZipRequest as MakeZipRequest
+from neurolinker_sdk._generated.models.make_zip_response import MakeZipResponse as MakeZipResponse
 from neurolinker_sdk._generated.models.process_pdfs_response import ProcessPDFsResponse as ProcessPDFsResponse
 from neurolinker_sdk._generated.models.request_status_response import RequestStatusResponse as RequestStatusResponse
 from neurolinker_sdk._generated.models.tasks_response import TasksResponse as TasksResponse
