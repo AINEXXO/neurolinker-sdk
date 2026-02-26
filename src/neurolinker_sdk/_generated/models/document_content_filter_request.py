@@ -17,24 +17,19 @@ import pprint
 import re  # noqa: F401
 import json
 
-from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
-from neurolinker_sdk._generated.models.document_info import DocumentInfo
+from neurolinker_sdk._generated.models.content_type import ContentType
 from typing import Optional, Set
 from typing_extensions import Self
 
-class JobSubmission(BaseModel):
+class DocumentContentFilterRequest(BaseModel):
     """
-    JobSubmission
+    DocumentContentFilterRequest
     """ # noqa: E501
-    request_uid: StrictStr = Field(description="Unique identifier for the request")
-    user_uid: StrictStr = Field(description="User identifier")
-    documents: List[DocumentInfo] = Field(description="List of documents in the request")
-    alias: Optional[StrictStr] = None
-    description: Optional[StrictStr] = None
-    uploaded_at: Optional[datetime] = None
-    __properties: ClassVar[List[str]] = ["request_uid", "user_uid", "documents", "alias", "description", "uploaded_at"]
+    document_ids: List[StrictStr] = Field(description="List of document IDs to retrieve")
+    content_types: Optional[List[ContentType]] = None
+    __properties: ClassVar[List[str]] = ["document_ids", "content_types"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -54,7 +49,7 @@ class JobSubmission(BaseModel):
 
     @classmethod
     def from_json(cls, json_str: str) -> Optional[Self]:
-        """Create an instance of JobSubmission from a JSON string"""
+        """Create an instance of DocumentContentFilterRequest from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -75,33 +70,16 @@ class JobSubmission(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
-        # override the default output from pydantic by calling `to_dict()` of each item in documents (list)
-        _items = []
-        if self.documents:
-            for _item_documents in self.documents:
-                if _item_documents:
-                    _items.append(_item_documents.to_dict())
-            _dict['documents'] = _items
-        # set to None if alias (nullable) is None
+        # set to None if content_types (nullable) is None
         # and model_fields_set contains the field
-        if self.alias is None and "alias" in self.model_fields_set:
-            _dict['alias'] = None
-
-        # set to None if description (nullable) is None
-        # and model_fields_set contains the field
-        if self.description is None and "description" in self.model_fields_set:
-            _dict['description'] = None
-
-        # set to None if uploaded_at (nullable) is None
-        # and model_fields_set contains the field
-        if self.uploaded_at is None and "uploaded_at" in self.model_fields_set:
-            _dict['uploaded_at'] = None
+        if self.content_types is None and "content_types" in self.model_fields_set:
+            _dict['content_types'] = None
 
         return _dict
 
     @classmethod
     def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
-        """Create an instance of JobSubmission from a dict"""
+        """Create an instance of DocumentContentFilterRequest from a dict"""
         if obj is None:
             return None
 
@@ -109,12 +87,8 @@ class JobSubmission(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "request_uid": obj.get("request_uid"),
-            "user_uid": obj.get("user_uid"),
-            "documents": [DocumentInfo.from_dict(_item) for _item in obj["documents"]] if obj.get("documents") is not None else None,
-            "alias": obj.get("alias"),
-            "description": obj.get("description"),
-            "uploaded_at": obj.get("uploaded_at")
+            "document_ids": obj.get("document_ids"),
+            "content_types": obj.get("content_types")
         })
         return _obj
 

@@ -13,8 +13,10 @@
 """  # noqa: E501
 
 # import models into model package
+from neurolinker_sdk._generated.models.content_type import ContentType
 from neurolinker_sdk._generated.models.create_pdf_request import CreatePDFRequest
 from neurolinker_sdk._generated.models.create_pdf_response import CreatePDFResponse
+from neurolinker_sdk._generated.models.document_content_filter_request import DocumentContentFilterRequest
 from neurolinker_sdk._generated.models.document_ids_request import DocumentIdsRequest
 from neurolinker_sdk._generated.models.document_images_response import DocumentImagesResponse
 from neurolinker_sdk._generated.models.document_info import DocumentInfo

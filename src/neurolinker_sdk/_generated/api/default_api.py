@@ -19,6 +19,7 @@ from pydantic import StrictBytes, StrictStr
 from typing import Any, List, Optional, Tuple, Union
 from neurolinker_sdk._generated.models.create_pdf_request import CreatePDFRequest
 from neurolinker_sdk._generated.models.create_pdf_response import CreatePDFResponse
+from neurolinker_sdk._generated.models.document_content_filter_request import DocumentContentFilterRequest
 from neurolinker_sdk._generated.models.document_ids_request import DocumentIdsRequest
 from neurolinker_sdk._generated.models.document_images_response import DocumentImagesResponse
 from neurolinker_sdk._generated.models.document_result_response import DocumentResultResponse
@@ -2229,7 +2230,7 @@ class DefaultApi:
     @validate_call
     def get_documents_json_api_v1_documents_json_post(
         self,
-        document_ids_request: DocumentIdsRequest,
+        document_content_filter_request: DocumentContentFilterRequest,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2247,8 +2248,8 @@ class DefaultApi:
 
         Get JSON results for specified documents
 
-        :param document_ids_request: (required)
-        :type document_ids_request: DocumentIdsRequest
+        :param document_content_filter_request: (required)
+        :type document_content_filter_request: DocumentContentFilterRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -2272,7 +2273,7 @@ class DefaultApi:
         """ # noqa: E501
 
         _param = self._get_documents_json_api_v1_documents_json_post_serialize(
-            document_ids_request=document_ids_request,
+            document_content_filter_request=document_content_filter_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -2297,7 +2298,7 @@ class DefaultApi:
     @validate_call
     def get_documents_json_api_v1_documents_json_post_with_http_info(
         self,
-        document_ids_request: DocumentIdsRequest,
+        document_content_filter_request: DocumentContentFilterRequest,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2315,8 +2316,8 @@ class DefaultApi:
 
         Get JSON results for specified documents
 
-        :param document_ids_request: (required)
-        :type document_ids_request: DocumentIdsRequest
+        :param document_content_filter_request: (required)
+        :type document_content_filter_request: DocumentContentFilterRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -2340,7 +2341,7 @@ class DefaultApi:
         """ # noqa: E501
 
         _param = self._get_documents_json_api_v1_documents_json_post_serialize(
-            document_ids_request=document_ids_request,
+            document_content_filter_request=document_content_filter_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -2365,7 +2366,7 @@ class DefaultApi:
     @validate_call
     def get_documents_json_api_v1_documents_json_post_without_preload_content(
         self,
-        document_ids_request: DocumentIdsRequest,
+        document_content_filter_request: DocumentContentFilterRequest,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2383,8 +2384,8 @@ class DefaultApi:
 
         Get JSON results for specified documents
 
-        :param document_ids_request: (required)
-        :type document_ids_request: DocumentIdsRequest
+        :param document_content_filter_request: (required)
+        :type document_content_filter_request: DocumentContentFilterRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -2408,7 +2409,7 @@ class DefaultApi:
         """ # noqa: E501
 
         _param = self._get_documents_json_api_v1_documents_json_post_serialize(
-            document_ids_request=document_ids_request,
+            document_content_filter_request=document_content_filter_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -2428,7 +2429,7 @@ class DefaultApi:
 
     def _get_documents_json_api_v1_documents_json_post_serialize(
         self,
-        document_ids_request,
+        document_content_filter_request,
         _request_auth,
         _content_type,
         _headers,
@@ -2454,8 +2455,8 @@ class DefaultApi:
         # process the header parameters
         # process the form parameters
         # process the body parameter
-        if document_ids_request is not None:
-            _body_params = document_ids_request
+        if document_content_filter_request is not None:
+            _body_params = document_content_filter_request
 
 
         # set the HTTP header `Accept`
@@ -2506,7 +2507,7 @@ class DefaultApi:
     @validate_call
     def get_documents_json_api_v1_mcp_documents_json_post(
         self,
-        document_ids_request: DocumentIdsRequest,
+        document_content_filter_request: DocumentContentFilterRequest,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2524,8 +2525,8 @@ class DefaultApi:
 
         Get JSON results for specified documents
 
-        :param document_ids_request: (required)
-        :type document_ids_request: DocumentIdsRequest
+        :param document_content_filter_request: (required)
+        :type document_content_filter_request: DocumentContentFilterRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -2549,7 +2550,7 @@ class DefaultApi:
         """ # noqa: E501
 
         _param = self._get_documents_json_api_v1_mcp_documents_json_post_serialize(
-            document_ids_request=document_ids_request,
+            document_content_filter_request=document_content_filter_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -2574,7 +2575,7 @@ class DefaultApi:
     @validate_call
     def get_documents_json_api_v1_mcp_documents_json_post_with_http_info(
         self,
-        document_ids_request: DocumentIdsRequest,
+        document_content_filter_request: DocumentContentFilterRequest,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2592,8 +2593,8 @@ class DefaultApi:
 
         Get JSON results for specified documents
 
-        :param document_ids_request: (required)
-        :type document_ids_request: DocumentIdsRequest
+        :param document_content_filter_request: (required)
+        :type document_content_filter_request: DocumentContentFilterRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -2617,7 +2618,7 @@ class DefaultApi:
         """ # noqa: E501
 
         _param = self._get_documents_json_api_v1_mcp_documents_json_post_serialize(
-            document_ids_request=document_ids_request,
+            document_content_filter_request=document_content_filter_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -2642,7 +2643,7 @@ class DefaultApi:
     @validate_call
     def get_documents_json_api_v1_mcp_documents_json_post_without_preload_content(
         self,
-        document_ids_request: DocumentIdsRequest,
+        document_content_filter_request: DocumentContentFilterRequest,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2660,8 +2661,8 @@ class DefaultApi:
 
         Get JSON results for specified documents
 
-        :param document_ids_request: (required)
-        :type document_ids_request: DocumentIdsRequest
+        :param document_content_filter_request: (required)
+        :type document_content_filter_request: DocumentContentFilterRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -2685,7 +2686,7 @@ class DefaultApi:
         """ # noqa: E501
 
         _param = self._get_documents_json_api_v1_mcp_documents_json_post_serialize(
-            document_ids_request=document_ids_request,
+            document_content_filter_request=document_content_filter_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -2705,7 +2706,7 @@ class DefaultApi:
 
     def _get_documents_json_api_v1_mcp_documents_json_post_serialize(
         self,
-        document_ids_request,
+        document_content_filter_request,
         _request_auth,
         _content_type,
         _headers,
@@ -2731,8 +2732,8 @@ class DefaultApi:
         # process the header parameters
         # process the form parameters
         # process the body parameter
-        if document_ids_request is not None:
-            _body_params = document_ids_request
+        if document_content_filter_request is not None:
+            _body_params = document_content_filter_request
 
 
         # set the HTTP header `Accept`
@@ -2783,7 +2784,7 @@ class DefaultApi:
     @validate_call
     def get_documents_markdown_api_v1_documents_markdown_post(
         self,
-        document_ids_request: DocumentIdsRequest,
+        document_content_filter_request: DocumentContentFilterRequest,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2801,8 +2802,8 @@ class DefaultApi:
 
         Get markdown results for specified documents
 
-        :param document_ids_request: (required)
-        :type document_ids_request: DocumentIdsRequest
+        :param document_content_filter_request: (required)
+        :type document_content_filter_request: DocumentContentFilterRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -2826,7 +2827,7 @@ class DefaultApi:
         """ # noqa: E501
 
         _param = self._get_documents_markdown_api_v1_documents_markdown_post_serialize(
-            document_ids_request=document_ids_request,
+            document_content_filter_request=document_content_filter_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -2851,7 +2852,7 @@ class DefaultApi:
     @validate_call
     def get_documents_markdown_api_v1_documents_markdown_post_with_http_info(
         self,
-        document_ids_request: DocumentIdsRequest,
+        document_content_filter_request: DocumentContentFilterRequest,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2869,8 +2870,8 @@ class DefaultApi:
 
         Get markdown results for specified documents
 
-        :param document_ids_request: (required)
-        :type document_ids_request: DocumentIdsRequest
+        :param document_content_filter_request: (required)
+        :type document_content_filter_request: DocumentContentFilterRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -2894,7 +2895,7 @@ class DefaultApi:
         """ # noqa: E501
 
         _param = self._get_documents_markdown_api_v1_documents_markdown_post_serialize(
-            document_ids_request=document_ids_request,
+            document_content_filter_request=document_content_filter_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -2919,7 +2920,7 @@ class DefaultApi:
     @validate_call
     def get_documents_markdown_api_v1_documents_markdown_post_without_preload_content(
         self,
-        document_ids_request: DocumentIdsRequest,
+        document_content_filter_request: DocumentContentFilterRequest,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2937,8 +2938,8 @@ class DefaultApi:
 
         Get markdown results for specified documents
 
-        :param document_ids_request: (required)
-        :type document_ids_request: DocumentIdsRequest
+        :param document_content_filter_request: (required)
+        :type document_content_filter_request: DocumentContentFilterRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -2962,7 +2963,7 @@ class DefaultApi:
         """ # noqa: E501
 
         _param = self._get_documents_markdown_api_v1_documents_markdown_post_serialize(
-            document_ids_request=document_ids_request,
+            document_content_filter_request=document_content_filter_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -2982,7 +2983,7 @@ class DefaultApi:
 
     def _get_documents_markdown_api_v1_documents_markdown_post_serialize(
         self,
-        document_ids_request,
+        document_content_filter_request,
         _request_auth,
         _content_type,
         _headers,
@@ -3008,8 +3009,8 @@ class DefaultApi:
         # process the header parameters
         # process the form parameters
         # process the body parameter
-        if document_ids_request is not None:
-            _body_params = document_ids_request
+        if document_content_filter_request is not None:
+            _body_params = document_content_filter_request
 
 
         # set the HTTP header `Accept`
@@ -3060,7 +3061,7 @@ class DefaultApi:
     @validate_call
     def get_documents_markdown_api_v1_mcp_documents_markdown_post(
         self,
-        document_ids_request: DocumentIdsRequest,
+        document_content_filter_request: DocumentContentFilterRequest,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -3078,8 +3079,8 @@ class DefaultApi:
 
         Get markdown results for specified documents
 
-        :param document_ids_request: (required)
-        :type document_ids_request: DocumentIdsRequest
+        :param document_content_filter_request: (required)
+        :type document_content_filter_request: DocumentContentFilterRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -3103,7 +3104,7 @@ class DefaultApi:
         """ # noqa: E501
 
         _param = self._get_documents_markdown_api_v1_mcp_documents_markdown_post_serialize(
-            document_ids_request=document_ids_request,
+            document_content_filter_request=document_content_filter_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -3128,7 +3129,7 @@ class DefaultApi:
     @validate_call
     def get_documents_markdown_api_v1_mcp_documents_markdown_post_with_http_info(
         self,
-        document_ids_request: DocumentIdsRequest,
+        document_content_filter_request: DocumentContentFilterRequest,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -3146,8 +3147,8 @@ class DefaultApi:
 
         Get markdown results for specified documents
 
-        :param document_ids_request: (required)
-        :type document_ids_request: DocumentIdsRequest
+        :param document_content_filter_request: (required)
+        :type document_content_filter_request: DocumentContentFilterRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -3171,7 +3172,7 @@ class DefaultApi:
         """ # noqa: E501
 
         _param = self._get_documents_markdown_api_v1_mcp_documents_markdown_post_serialize(
-            document_ids_request=document_ids_request,
+            document_content_filter_request=document_content_filter_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -3196,7 +3197,7 @@ class DefaultApi:
     @validate_call
     def get_documents_markdown_api_v1_mcp_documents_markdown_post_without_preload_content(
         self,
-        document_ids_request: DocumentIdsRequest,
+        document_content_filter_request: DocumentContentFilterRequest,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -3214,8 +3215,8 @@ class DefaultApi:
 
         Get markdown results for specified documents
 
-        :param document_ids_request: (required)
-        :type document_ids_request: DocumentIdsRequest
+        :param document_content_filter_request: (required)
+        :type document_content_filter_request: DocumentContentFilterRequest
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -3239,7 +3240,7 @@ class DefaultApi:
         """ # noqa: E501
 
         _param = self._get_documents_markdown_api_v1_mcp_documents_markdown_post_serialize(
-            document_ids_request=document_ids_request,
+            document_content_filter_request=document_content_filter_request,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -3259,7 +3260,7 @@ class DefaultApi:
 
     def _get_documents_markdown_api_v1_mcp_documents_markdown_post_serialize(
         self,
-        document_ids_request,
+        document_content_filter_request,
         _request_auth,
         _content_type,
         _headers,
@@ -3285,8 +3286,8 @@ class DefaultApi:
         # process the header parameters
         # process the form parameters
         # process the body parameter
-        if document_ids_request is not None:
-            _body_params = document_ids_request
+        if document_content_filter_request is not None:
+            _body_params = document_content_filter_request
 
 
         # set the HTTP header `Accept`

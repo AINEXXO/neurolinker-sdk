@@ -1665,7 +1665,19 @@
                             }
                         ],
                         "title": "Alias",
-                        "description": "Optional alias for the request"
+                        "description": "Optional name/alias for the request"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Optional description for the request"
                     },
                     "uploaded_at": {
                         "anyOf": [
