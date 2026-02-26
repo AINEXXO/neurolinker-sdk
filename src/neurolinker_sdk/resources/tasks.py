@@ -15,10 +15,10 @@ class TasksResource:
 
     def list(self) -> Dict[str, Any]:
         """
-        GET /api/v1/tasks
+        GET /v1/tasks
         Returns the processing tasks available in the system.
         """
-        url = _build_url(self._base_url, "/api/v1/tasks")
+        url = _build_url(self._base_url, "/v1/tasks")
         resp = self._client.get(url, headers=_json_headers(self._token))
         _raise_for_status(resp)
         return resp.json()
@@ -31,7 +31,7 @@ class AsyncTasksResource:
         self._client = client
 
     async def list(self) -> Dict[str, Any]:
-        url = _build_url(self._base_url, "/api/v1/tasks")
+        url = _build_url(self._base_url, "/v1/tasks")
         resp = await self._client.get(url, headers=_json_headers(self._token))
         _raise_for_status(resp)
         return resp.json()

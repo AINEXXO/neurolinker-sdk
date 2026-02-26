@@ -7,7 +7,7 @@ from .errors import NeuroLinkerConfigError
 
 # Default base URL used when NEUROLINKER_BASE_URL is not provided.
 # Choose the canonical/public deployment you want as the default.
-DEFAULT_BASE_URL = "https://dev.ainexxo.com/neurolinker"
+DEFAULT_BASE_URL = "https://neurolinker.api.ainexxo.com"
 
 
 @dataclass(frozen=True)
@@ -19,7 +19,7 @@ class NeuroLinkerConfig:
     token is required.
 
     base_url should include the deployment path if the API is mounted there,
-    e.g. https://dev.ainexxo.com/neurolinker.
+    e.g. https://neurolinker.api.ainexxo.com.
     """
     base_url: str = DEFAULT_BASE_URL
     token: str = ""

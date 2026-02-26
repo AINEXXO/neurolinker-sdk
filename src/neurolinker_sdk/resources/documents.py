@@ -82,7 +82,7 @@ class DocumentsResource:
         When content_types is provided, the backend will filter or structure
         the markdown output according to the requested content classes.
         """
-        return self._post_ids("/api/v1/documents/markdown", document_ids, content_types=content_types)
+        return self._post_ids("/v1/documents/markdown", document_ids, content_types=content_types)
 
     def json(
         self,
@@ -95,22 +95,22 @@ class DocumentsResource:
         When content_types is provided, the backend will filter or structure
         the JSON output according to the requested content classes.
         """
-        return self._post_ids("/api/v1/documents/json", document_ids, content_types=content_types)
+        return self._post_ids("/v1/documents/json", document_ids, content_types=content_types)
 
     def images(self, document_ids: List[str]) -> Dict[str, Any]:
-        return self._post_ids("/api/v1/documents/images", document_ids)
+        return self._post_ids("/v1/documents/images", document_ids)
 
     def page_summaries(self, document_ids: List[str]) -> Dict[str, Any]:
-        return self._post_ids("/api/v1/documents/page-summaries", document_ids)
+        return self._post_ids("/v1/documents/page-summaries", document_ids)
 
     def summary(self, document_ids: List[str]) -> Dict[str, Any]:
-        return self._post_ids("/api/v1/documents/summary", document_ids)
+        return self._post_ids("/v1/documents/summary", document_ids)
 
     def section_summaries(self, document_ids: List[str]) -> Dict[str, Any]:
-        return self._post_ids("/api/v1/documents/section-summaries", document_ids)
+        return self._post_ids("/v1/documents/section-summaries", document_ids)
 
     def section_summary(self, document_ids: List[str]) -> Dict[str, Any]:
-        return self._post_ids("/api/v1/documents/section-summary", document_ids)
+        return self._post_ids("/v1/documents/section-summary", document_ids)
 
 
 class AsyncDocumentsResource:
@@ -149,7 +149,7 @@ class AsyncDocumentsResource:
         *,
         content_types: Optional[Sequence[Union[ContentType, str]]] = None,
     ) -> Dict[str, Any]:
-        return await self._post_ids("/api/v1/documents/markdown", document_ids, content_types=content_types)
+        return await self._post_ids("/v1/documents/markdown", document_ids, content_types=content_types)
 
     async def json(
         self,
@@ -157,19 +157,19 @@ class AsyncDocumentsResource:
         *,
         content_types: Optional[Sequence[Union[ContentType, str]]] = None,
     ) -> Dict[str, Any]:
-        return await self._post_ids("/api/v1/documents/json", document_ids, content_types=content_types)
+        return await self._post_ids("/v1/documents/json", document_ids, content_types=content_types)
 
     async def images(self, document_ids: List[str]) -> Dict[str, Any]:
-        return await self._post_ids("/api/v1/documents/images", document_ids)
+        return await self._post_ids("/v1/documents/images", document_ids)
 
     async def page_summaries(self, document_ids: List[str]) -> Dict[str, Any]:
-        return await self._post_ids("/api/v1/documents/page-summaries", document_ids)
+        return await self._post_ids("/v1/documents/page-summaries", document_ids)
 
     async def summary(self, document_ids: List[str]) -> Dict[str, Any]:
-        return await self._post_ids("/api/v1/documents/summary", document_ids)
+        return await self._post_ids("/v1/documents/summary", document_ids)
 
     async def section_summaries(self, document_ids: List[str]) -> Dict[str, Any]:
-        return await self._post_ids("/api/v1/documents/section-summaries", document_ids)
+        return await self._post_ids("/v1/documents/section-summaries", document_ids)
 
     async def section_summary(self, document_ids: List[str]) -> Dict[str, Any]:
-        return await self._post_ids("/api/v1/documents/section-summary", document_ids)
+        return await self._post_ids("/v1/documents/section-summary", document_ids)

@@ -45,6 +45,14 @@ jobs:
       - name: Install project (dev dependencies)
         run: uv sync --locked --dev
 
+      - name: Create .env from GitHub secrets
+        run: |
+          cat <<EOF > .env
+          NEUROLINKER_BASE_URL=${{ secrets.NEUROLINKER_BASE_URL }}
+          NEUROLINKER_TOKEN=${{ secrets.NEUROLINKER_TOKEN }}
+          NEUROLINKER_TEST_PDF_URL=${{ secrets.NEUROLINKER_TEST_PDF_URL }}
+          EOF
+
       - name: Run tests
         run: uv run pytest
 

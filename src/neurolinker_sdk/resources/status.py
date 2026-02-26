@@ -15,18 +15,18 @@ class StatusResource:
 
     def request(self, request_id: str) -> Dict[str, Any]:
         """
-        GET /api/v1/request-status/{request_id}
+        GET /v1/request-status/{request_id}
         """
-        url = _build_url(self._base_url, f"/api/v1/request-status/{request_id}")
+        url = _build_url(self._base_url, f"/v1/request-status/{request_id}")
         resp = self._client.get(url, headers=_json_headers(self._token))
         _raise_for_status(resp)
         return resp.json()
 
     def document(self, document_id: str) -> Dict[str, Any]:
         """
-        GET /api/v1/document-status/{document_id}
+        GET /v1/document-status/{document_id}
         """
-        url = _build_url(self._base_url, f"/api/v1/document-status/{document_id}")
+        url = _build_url(self._base_url, f"/v1/document-status/{document_id}")
         resp = self._client.get(url, headers=_json_headers(self._token))
         _raise_for_status(resp)
         return resp.json()
@@ -39,13 +39,13 @@ class AsyncStatusResource:
         self._client = client
 
     async def request(self, request_id: str) -> Dict[str, Any]:
-        url = _build_url(self._base_url, f"/api/v1/request-status/{request_id}")
+        url = _build_url(self._base_url, f"/v1/request-status/{request_id}")
         resp = await self._client.get(url, headers=_json_headers(self._token))
         _raise_for_status(resp)
         return resp.json()
 
     async def document(self, document_id: str) -> Dict[str, Any]:
-        url = _build_url(self._base_url, f"/api/v1/document-status/{document_id}")
+        url = _build_url(self._base_url, f"/v1/document-status/{document_id}")
         resp = await self._client.get(url, headers=_json_headers(self._token))
         _raise_for_status(resp)
         return resp.json()
