@@ -26,6 +26,7 @@ class ExtractResource:
         documents: Optional[List[Tuple[str, bytes]]] = None,
         urls: Optional[List[str]] = None,
         alias: Optional[str] = None,
+        description: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         POST /api/v1/extract
@@ -37,13 +38,15 @@ class ExtractResource:
         This method enforces the contract by:
           - Rejecting mixed usage (documents + urls)
           - For documents mode: forcing form="{}"
-          - For urls mode: using form with documents_url + optional alias
+          - For urls mode: using form with documents_url + optional alias/description
         """
         has_docs = bool(documents)
         has_urls = bool(urls)
 
         if has_docs and has_urls:
-            raise NeuroLinkerConfigError("Invalid extract call: provide either 'documents' or 'urls', not both.")
+            raise NeuroLinkerConfigError(
+                "Invalid extract call: provide either 'documents' or 'urls', not both."
+            )
 
         url = _build_url(self._base_url, "/api/v1/extract")
         headers = _json_headers(self._token)
@@ -59,10 +62,16 @@ class ExtractResource:
         # URLs mode: documents must be empty.
         # If neither docs nor urls were provided, that's not a valid request.
         if not has_urls:
-            raise NeuroLinkerConfigError("Invalid extract call: you must provide either 'documents' or 'urls'.")
+            raise NeuroLinkerConfigError(
+                "Invalid extract call: you must provide either 'documents' or 'urls'."
+            )
 
-        # Build the JSON form payload (docs say the key is 'documents_url')
-        form_json = _encode_form_payload(urls=urls, alias=alias)
+        # Build the JSON form payload with documents_url, alias and description.
+        form_json = _encode_form_payload(
+            urls=urls,
+            alias=alias,
+            description=description,
+        )
         data = {"form": form_json}
 
         resp = self._client.post(url, headers=headers, data=data, files=[])
@@ -82,6 +91,7 @@ class AsyncExtractResource:
         documents: Optional[List[Tuple[str, bytes]]] = None,
         urls: Optional[List[str]] = None,
         alias: Optional[str] = None,
+        description: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Async version of ExtractResource.extract().
@@ -91,7 +101,9 @@ class AsyncExtractResource:
         has_urls = bool(urls)
 
         if has_docs and has_urls:
-            raise NeuroLinkerConfigError("Invalid extract call: provide either 'documents' or 'urls', not both.")
+            raise NeuroLinkerConfigError(
+                "Invalid extract call: provide either 'documents' or 'urls', not both."
+            )
 
         url = _build_url(self._base_url, "/api/v1/extract")
         headers = _json_headers(self._token)
@@ -104,9 +116,16 @@ class AsyncExtractResource:
             return resp.json()
 
         if not has_urls:
-            raise NeuroLinkerConfigError("Invalid extract call: you must provide either 'documents' or 'urls'.")
+            raise NeuroLinkerConfigError(
+                "Invalid extract call: you must provide either 'documents' or 'urls'."
+            )
 
-        form_json = _encode_form_payload(urls=urls, alias=alias)
+        # URLs mode: build form JSON exactly as in the sync version.
+        form_json = _encode_form_payload(
+            urls=urls,
+            alias=alias,
+            description=description,
+        )
         data = {"form": form_json}
 
         resp = await self._client.post(url, headers=headers, data=data, files=[])

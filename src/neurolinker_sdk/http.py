@@ -59,10 +59,26 @@ def _coerce_files(
     return files
 
 
-def _encode_form_payload(urls: Optional[list[str]], alias: Optional[str]) -> str:
+def _encode_form_payload(
+    urls: Optional[list[str]],
+    alias: Optional[str],
+    description: Optional[str] = None,
+) -> str:
+    """
+    Build the JSON payload sent in the `form` field for URL-based extraction.
+
+    The backend expects:
+      - `documents_url`: list of URLs to download documents from
+      - `alias`: optional alias for the request
+      - `description`: optional description for the request
+    """
     payload: Dict[str, Any] = {}
+
     if urls:
         payload["documents_url"] = urls
     if alias:
         payload["alias"] = alias
+    if description:
+        payload["description"] = description
+
     return json.dumps(payload)

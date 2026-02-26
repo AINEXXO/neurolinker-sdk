@@ -28,8 +28,10 @@ __all__ = [
     "ApiKeyError",
     "ApiAttributeError",
     "ApiException",
+    "ContentType",
     "CreatePDFRequest",
     "CreatePDFResponse",
+    "DocumentContentFilterRequest",
     "DocumentIdsRequest",
     "DocumentImagesResponse",
     "DocumentInfo",
@@ -63,8 +65,10 @@ from neurolinker_sdk._generated.exceptions import ApiAttributeError as ApiAttrib
 from neurolinker_sdk._generated.exceptions import ApiException as ApiException
 
 # import models into sdk package
+from neurolinker_sdk._generated.models.content_type import ContentType as ContentType
 from neurolinker_sdk._generated.models.create_pdf_request import CreatePDFRequest as CreatePDFRequest
 from neurolinker_sdk._generated.models.create_pdf_response import CreatePDFResponse as CreatePDFResponse
+from neurolinker_sdk._generated.models.document_content_filter_request import DocumentContentFilterRequest as DocumentContentFilterRequest
 from neurolinker_sdk._generated.models.document_ids_request import DocumentIdsRequest as DocumentIdsRequest
 from neurolinker_sdk._generated.models.document_images_response import DocumentImagesResponse as DocumentImagesResponse
 from neurolinker_sdk._generated.models.document_info import DocumentInfo as DocumentInfo
