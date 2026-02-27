@@ -1,6 +1,7 @@
 ## 1.Activate Virtual Environment
 
 ```bash
+python -m venv .venv 
 source .venv/bin/activate
 ```
 
@@ -41,10 +42,10 @@ poi fai punto 1 2 e 3.
 commit del cambiamento generato + eventuali aggiustamenti.
 
 
-## Quando si vuole fare una nuova release
-
-1. Usare il comando `uv run pytest` per fare il test
-2. (opzionale) Usare il comando `uv run ruff format .` per formattare il codice
-3. (opzionale) Usare il comando `uv run ruff check .` per fare il check
-4. Usare il comando `uv version --bump patch` per incrementare la versione
-5. Merge su main per attivare la pipeline di release.
+## Quando si fa un cambiamento
+1. Modifica in pyproject il versioning manualmente
+2. Esegui `uv lock`
+3. (opzionale) Esegui `uv run pytest`
+4. (opzionale) Esegui `uv run ruff format .`
+5. (opzionale) Esegui `uv run ruff check .`
+6. Commit del cambiamento generato e avvia manualmente la pipeline sulle github actions "publish.yml"
