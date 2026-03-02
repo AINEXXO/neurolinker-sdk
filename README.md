@@ -45,7 +45,18 @@ export NEUROLINKER_TOKEN="your_token"
 export NEUROLINKER_BASE_URL="https://neurolinker.api.ainexxo.com"
 ```
 
-Quick start (**sync**):
+### Quick start
+
+- **sync**
+```python
+from neurolinker_sdk import NeuroLinker
+
+with NeuroLinker(token="nl_****") as client:
+    tasks = client.tasks.list()
+
+```
+
+- with .env (**sync**):
 
 ```python
 from neurolinker_sdk import NeuroLinker
@@ -54,7 +65,18 @@ with NeuroLinker.from_env() as client:
     tasks = client.tasks.list()
 ```
 
-Quick start (**async**):
+### Quick start:
+
+- **async**
+```python
+from neurolinker_sdk import AsyncNeuroLinker
+
+async with AsyncNeuroLinker(token="nl_****") as client:
+    tasks = await client.tasks.list()
+
+```
+
+- with .env (**async**):
 
 ```python
 from neurolinker_sdk import AsyncNeuroLinker
