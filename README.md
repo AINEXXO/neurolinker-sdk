@@ -65,8 +65,6 @@ with NeuroLinker.from_env() as client:
     tasks = client.tasks.list()
 ```
 
-### Quick start:
-
 - **async**
 ```python
 from neurolinker_sdk import AsyncNeuroLinker
