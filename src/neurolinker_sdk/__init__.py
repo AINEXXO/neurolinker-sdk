@@ -1,4 +1,4 @@
-from .client import NeuroLinker, AsyncNeuroLinker
+from .client import AsyncNeuroLinker, NeuroLinker
 from .errors import NeuroLinkerAPIError, NeuroLinkerConfigError
 
 __all__ = [

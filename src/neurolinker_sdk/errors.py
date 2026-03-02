@@ -15,6 +15,7 @@ class NeuroLinkerAPIError(RuntimeError):
 
     We keep both raw response text and optional JSON payload for debugging.
     """
+
     status_code: int
     method: str
     url: str

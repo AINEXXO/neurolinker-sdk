@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
 
+from ..errors import NeuroLinkerConfigError
 from ..http import (
     _build_url,
     _coerce_files,
@@ -11,7 +12,6 @@ from ..http import (
     _json_headers,
     _raise_for_status,
 )
-from ..errors import NeuroLinkerConfigError
 
 
 class ExtractResource:

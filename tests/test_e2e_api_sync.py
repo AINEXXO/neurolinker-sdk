@@ -100,7 +100,11 @@ async def test_e2e_all_public_endpoints_async():
         assert isinstance(tasks, dict)
         assert "success" in tasks
 
-        extract_resp = await client.extract.extract(urls=[PDF_URL], alias="sdk-e2e-test-sync", description="Description for sdk-e2e-test-sync")
+        extract_resp = await client.extract.extract(
+            urls=[PDF_URL],
+            alias="sdk-e2e-test-sync",
+            description="Description for sdk-e2e-test-sync",
+        )
         request_uid = _extract_request_uid(extract_resp)
 
         status_resp = await _wait_for_request_completion(client, request_uid)

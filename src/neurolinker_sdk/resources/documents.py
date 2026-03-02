@@ -149,7 +149,9 @@ class AsyncDocumentsResource:
         *,
         content_types: Optional[Sequence[Union[ContentType, str]]] = None,
     ) -> Dict[str, Any]:
-        return await self._post_ids("/v1/documents/markdown", document_ids, content_types=content_types)
+        return await self._post_ids(
+            "/v1/documents/markdown", document_ids, content_types=content_types
+        )
 
     async def json(
         self,

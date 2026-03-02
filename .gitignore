@@ -211,6 +211,5 @@ __marimo__/
 *.pyc
 /scripts
 /openapi
-/tests
 /generated
 tech-doc.md
