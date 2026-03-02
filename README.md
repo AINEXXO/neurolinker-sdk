@@ -104,6 +104,9 @@ Async version of `from_env`.
 
 These are a list of methods that can be used. Async equivalents exist for every resource and use the same parameters with `await`.
 
+> _Note_: In order to facilitate the workflow, the sdk offers methods for polling results since many actions have success only when the result of the document is _completed_. 
+
+
 - `client.tasks.list()`
 List the processing tasks available in the system.
 
