@@ -4,11 +4,11 @@ import pytest
 from neurolinker_sdk import NeuroLinker
 
 
-TOKEN = os.getenv("NEUROLINKER_TOKEN")
+TOKEN = os.getenv("NEUROLINKER_API_KEY")
 
 pytestmark = pytest.mark.skipif(
     not TOKEN,
-    reason="Set NEUROLINKER_TOKEN to run integration tests.",
+    reason="Set NEUROLINKER_API_KEY to run integration tests.",
 )
 
 

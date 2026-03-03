@@ -12,7 +12,7 @@ class ZipResource:
     Synchronous helper around the make-zip endpoint.
 
     This is a thin convenience wrapper over:
-        POST /api/v1/mcp/make-zip
+        POST /v1/mcp/make-zip
 
     The endpoint returns a short-lived signed URL that can be used to download
     the generated ZIP file directly from storage.
@@ -51,7 +51,7 @@ class ZipResource:
             JSON payload returned by the API, typically:
             {"success": true, "url": "...", "message": "..."}.
         """
-        url = _build_url(self._base_url, "/api/v1/mcp/make-zip")
+        url = _build_url(self._base_url, "/v1/mcp/make-zip")
 
         # IMPORTANT:
         # The backend MakeZipRequest model expects:
@@ -89,7 +89,7 @@ class AsyncZipResource:
         """
         Async variant of ZipResource.make_zip.
         """
-        url = _build_url(self._base_url, "/api/v1/mcp/make-zip")
+        url = _build_url(self._base_url, "/v1/mcp/make-zip")
 
         body: Dict[str, Any] = {
             "request_id": job_uid,

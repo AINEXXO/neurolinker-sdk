@@ -5,9 +5,11 @@ from dataclasses import dataclass
 
 from .errors import NeuroLinkerConfigError
 
-# Default base URL used when NEUROLINKER_BASE_URL is not provided.
-# Choose the canonical/public deployment you want as the default.
-DEFAULT_BASE_URL = "https://dev.ainexxo.com/neurolinker"
+# Canonical/public NeuroLinker deployment.
+DEFAULT_BASE_URL = "https://neurolinker.api.ainexxo.com"
+DEFAULT_TIMEOUT_S = 600.0
+DEFAULT_POLL_INTERVAL_S = 2.0
+DEFAULT_POLL_MAX_INTERVAL_S = 10.0
 
 
 @dataclass(frozen=True)
@@ -15,29 +17,41 @@ class NeuroLinkerConfig:
     """
     SDK configuration.
 
-    base_url is optional in the environment: if not provided, DEFAULT_BASE_URL is used.
     token is required.
-
-    base_url should include the deployment path if the API is mounted there,
-    e.g. https://dev.ainexxo.com/neurolinker.
+    base_url is optional and defaults to the canonical public deployment.
+    timeout/poll values are used by request completion helpers.
     """
+
     base_url: str = DEFAULT_BASE_URL
     token: str = ""
-    timeout_s: float = 30.0
+    timeout_s: float = DEFAULT_TIMEOUT_S
+    poll_interval_s: float = DEFAULT_POLL_INTERVAL_S
+    poll_max_interval_s: float = DEFAULT_POLL_MAX_INTERVAL_S
 
     @staticmethod
     def from_env() -> "NeuroLinkerConfig":
         base_url = os.getenv("NEUROLINKER_BASE_URL", "").strip()
-        token = os.getenv("NEUROLINKER_TOKEN", "").strip()
+        token = os.getenv("NEUROLINKER_API_KEY", "").strip()
+        timeout_s = float(os.getenv("NEUROLINKER_E2E_TIMEOUT_S", str(DEFAULT_TIMEOUT_S)))
+        poll_interval_s = float(
+            os.getenv("NEUROLINKER_E2E_POLL_INTERVAL_S", str(DEFAULT_POLL_INTERVAL_S))
+        )
+        poll_max_interval_s = float(
+            os.getenv("NEUROLINKER_E2E_POLL_MAX_INTERVAL_S", str(DEFAULT_POLL_MAX_INTERVAL_S))
+        )
 
         if not token:
-            raise NeuroLinkerConfigError("NEUROLINKER_TOKEN is not set.")
+            raise NeuroLinkerConfigError("NEUROLINKER_API_KEY is not set.")
 
-        # If base_url is not set, fall back to DEFAULT_BASE_URL.
         if not base_url:
             base_url = DEFAULT_BASE_URL
 
-        # Normalize to avoid double slashes.
         base_url = base_url.rstrip("/")
 
-        return NeuroLinkerConfig(base_url=base_url, token=token)
+        return NeuroLinkerConfig(
+            base_url=base_url,
+            token=token,
+            timeout_s=timeout_s,
+            poll_interval_s=poll_interval_s,
+            poll_max_interval_s=poll_max_interval_s,
+        )

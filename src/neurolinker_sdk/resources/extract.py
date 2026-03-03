@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
 
+from ..errors import NeuroLinkerConfigError
 from ..http import (
     _build_url,
     _coerce_files,
@@ -11,7 +12,6 @@ from ..http import (
     _json_headers,
     _raise_for_status,
 )
-from ..errors import NeuroLinkerConfigError
 
 
 class ExtractResource:
@@ -29,7 +29,7 @@ class ExtractResource:
         description: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        POST /api/v1/extract
+        POST /v1/extract
 
         Contract (per documentation):
           - If uploading files via 'documents', then 'form' must be an empty JSON object: {}.
@@ -48,7 +48,7 @@ class ExtractResource:
                 "Invalid extract call: provide either 'documents' or 'urls', not both."
             )
 
-        url = _build_url(self._base_url, "/api/v1/extract")
+        url = _build_url(self._base_url, "/v1/extract")
         headers = _json_headers(self._token)
 
         if has_docs:
@@ -105,7 +105,7 @@ class AsyncExtractResource:
                 "Invalid extract call: provide either 'documents' or 'urls', not both."
             )
 
-        url = _build_url(self._base_url, "/api/v1/extract")
+        url = _build_url(self._base_url, "/v1/extract")
         headers = _json_headers(self._token)
 
         if has_docs:

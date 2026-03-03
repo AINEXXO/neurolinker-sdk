@@ -209,8 +209,7 @@ __marimo__/
 
 # Generated
 *.pyc
-/generated
 /scripts
 /openapi
-/tests
-
+/generated
+tech-doc.md

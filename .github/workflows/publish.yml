@@ -13,6 +13,9 @@ jobs:
   release:
     runs-on: ubuntu-latest
 
+    # IMPORTANT: collega questo job all'environment "prod"
+    environment: prod
+
     permissions:
       contents: write    # serve per pushare il tag
 
@@ -44,6 +47,14 @@ jobs:
 
       - name: Install project (dev dependencies)
         run: uv sync --locked --dev
+
+      - name: Create .env from GitHub secrets and variables
+        run: |
+          cat <<EOF > .env
+          NEUROLINKER_BASE_URL=${{ vars.NEUROLINKER_BASE_URL }}
+          NEUROLINKER_API_KEY=${{ secrets.NEUROLINKER_API_KEY }}
+          NEUROLINKER_TEST_PDF_URL=${{ vars.NEUROLINKER_TEST_PDF_URL }}
+          EOF
 
       - name: Run tests
         run: uv run pytest
