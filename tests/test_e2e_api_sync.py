@@ -7,7 +7,7 @@ from neurolinker_sdk import AsyncNeuroLinker
 from neurolinker_sdk.errors import NeuroLinkerAPIError
 
 
-TOKEN = os.getenv("NEUROLINKER_TOKEN")
+TOKEN = os.getenv("NEUROLINKER_API_KEY")
 PDF_URL = os.getenv("NEUROLINKER_TEST_PDF_URL")
 
 E2E_TIMEOUT_S = float(os.getenv("NEUROLINKER_E2E_TIMEOUT_S", "600"))
@@ -16,7 +16,7 @@ POLL_MAX_INTERVAL_S = float(os.getenv("NEUROLINKER_E2E_POLL_MAX_INTERVAL_S", "10
 
 pytestmark = pytest.mark.skipif(
     not TOKEN or not PDF_URL,
-    reason="Set NEUROLINKER_TOKEN and NEUROLINKER_TEST_PDF_URL to run URL E2E tests.",
+    reason="Set NEUROLINKER_API_KEY and NEUROLINKER_TEST_PDF_URL to run URL E2E tests.",
 )
 
 
@@ -67,7 +67,7 @@ async def _wait_for_request_completion(client: AsyncNeuroLinker, request_uid: st
         if status is None and isinstance(last.get("data"), dict):
             status = last["data"].get("status")
 
-        if status in ("completed", "failed", "partial"):
+        if status in ("completed", "failed", "pending"):
             return last
 
         await asyncio.sleep(interval)

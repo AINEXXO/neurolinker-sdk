@@ -7,7 +7,7 @@ import pytest
 from neurolinker_sdk import NeuroLinker
 
 
-TOKEN = os.getenv("NEUROLINKER_TOKEN")
+TOKEN = os.getenv("NEUROLINKER_API_KEY")
 
 # Prefer multi-file var. Fall back to single file var.
 PDF_PATHS_RAW = os.getenv("NEUROLINKER_TEST_PDF_PATHS", "").strip()
@@ -38,7 +38,7 @@ PDF_PATHS = _get_pdf_paths()
 
 pytestmark = pytest.mark.skipif(
     not TOKEN or not PDF_PATHS,
-    reason="Set NEUROLINKER_TOKEN and NEUROLINKER_TEST_PDF_PATH(S) to run local E2E tests.",
+    reason="Set NEUROLINKER_API_KEY and NEUROLINKER_TEST_PDF_PATH(S) to run local E2E tests.",
 )
 
 
@@ -124,7 +124,7 @@ def _wait_for_request_completion(client: NeuroLinker, request_uid: str) -> dict:
         if status is None and isinstance(last.get("data"), dict):
             status = last["data"].get("status")
 
-        if status in ("completed", "failed", "partial"):
+        if status in ("completed", "failed", "pending"):
             return last
 
         time.sleep(interval)

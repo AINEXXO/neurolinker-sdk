@@ -37,11 +37,11 @@ uv run pytest
 
 Set credentials preferably into a .env file (token is required; NEUROLINKER_BASE_URL is optional and defaults to the public deployment).
 
-`NEUROLINKER_TOKEN` (required) : generate it from the official neurolinker website https://neurolinker.ainexxo.com/ - Login and go to the API KEY section.
+`NEUROLINKER_API_KEY` (required) : generate it from the official neurolinker website https://neurolinker.ainexxo.com/ - Login and go to the API KEY section.
 `NEUROLINKER_BASE_URL` (optional) defaults to `https://neurolinker.api.ainexxo.com`.
 
 ```bash
-export NEUROLINKER_TOKEN="your_token"
+export NEUROLINKER_API_KEY="your_token"
 export NEUROLINKER_BASE_URL="https://neurolinker.api.ainexxo.com"
 ```
 
@@ -127,7 +127,7 @@ Extract `request_uid` from the extract response (supports both top-level and nes
 Extract document IDs from a request-status response.
 
 - `client.wait_for_request_completion(request_uid, timeout_s=None, poll_interval_s=None, poll_max_interval_s=None)`
-Built-in polling helper that waits for terminal status (`completed`, `failed`, `partial`), handling transient `404` during early processing.
+Built-in polling helper that waits for terminal status (`completed`, `failed`, `pending`), handling transient `404` during early processing.
 
 - `client.documents.markdown(document_ids, content_types=None)`
 Retrieve markdown results for document IDs. `content_types` can be a list of `ContentType` values or strings.
@@ -162,7 +162,7 @@ Exceptions raised for non-2xx API responses or missing/invalid configuration.
 
 Tests in this repository cover sync and async flows, URL-based extraction, local file uploads, section endpoints, content type filters, and ZIP creation. See the `tests/` directory. The E2E tests use these environment variables:
 
-- `NEUROLINKER_TOKEN` (required) : generate it from the official neurolinker website https://neurolinker.ainexxo.com/ - login and go to the API KEY section.
+- `NEUROLINKER_API_KEY` (required) : generate it from the official neurolinker website https://neurolinker.ainexxo.com/ - login and go to the API KEY section.
 - `NEUROLINKER_TEST_PDF_URL` (required for URL-based E2E) : Its a web url of a pdf that can be downloaded from the backend.
 Example: "https://arxiv.org/pdf/..." 
 - `NEUROLINKER_TEST_PDF_PATH` or `NEUROLINKER_TEST_PDF_PATHS` (required for local upload E2E); Its the local path of a pdf. Example: "<local_path>/mypdf1.pdf" and "<local_path>/mypdf2.pdf,<local_path>/mypdf3.pdf"

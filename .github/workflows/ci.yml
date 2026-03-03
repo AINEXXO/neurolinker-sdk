@@ -6,10 +6,14 @@ on:
   # pull_request:
   #   branches: [main, dev]
   workflow_dispatch: {}
+  
 
 jobs:
   tests:
     runs-on: ubuntu-latest
+
+    # IMPORTANT: collega questo job all'environment "dev"
+    environment: dev
 
     steps:
       - name: Checkout repository
@@ -30,12 +34,12 @@ jobs:
         run: uv sync --locked --dev
 
       # optional: if you want to create a .env with some secrets
-      - name: Create .env from GitHub secrets
+      - name: Create .env from GitHub secrets and variables
         run: |
           cat <<EOF > .env
-          NEUROLINKER_BASE_URL=${{ secrets.NEUROLINKER_BASE_URL }}
-          NEUROLINKER_TOKEN=${{ secrets.NEUROLINKER_TOKEN }}
-          NEUROLINKER_TEST_PDF_URL=${{ secrets.NEUROLINKER_TEST_PDF_URL }}
+          NEUROLINKER_BASE_URL=${{ vars.NEUROLINKER_BASE_URL }}
+          NEUROLINKER_API_KEY=${{ secrets.NEUROLINKER_API_KEY }}
+          NEUROLINKER_TEST_PDF_URL=${{ vars.NEUROLINKER_TEST_PDF_URL }}
           EOF
 
       - name: Run tests

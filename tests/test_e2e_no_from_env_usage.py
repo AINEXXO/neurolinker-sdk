@@ -4,12 +4,12 @@ import pytest
 
 from neurolinker_sdk import AsyncNeuroLinker
 
-TOKEN = os.getenv("NEUROLINKER_TOKEN")
+TOKEN = os.getenv("NEUROLINKER_API_KEY")
 PDF_URL = os.getenv("NEUROLINKER_TEST_PDF_URL")
 
 pytestmark = pytest.mark.skipif(
     not TOKEN or not PDF_URL,
-    reason="Set NEUROLINKER_TOKEN and NEUROLINKER_TEST_PDF_URL to run this E2E test.",
+    reason="Set NEUROLINKER_API_KEY and NEUROLINKER_TEST_PDF_URL to run this E2E test.",
 )
 
 

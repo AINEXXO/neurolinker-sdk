@@ -17,7 +17,7 @@ from test_e2e_api_sync_local import (
 from test_e2e_api_sync import _assert_documents_results_schema
 
 
-TOKEN = os.getenv("NEUROLINKER_TOKEN")
+TOKEN = os.getenv("NEUROLINKER_API_KEY")
 PDF_URL = os.getenv("NEUROLINKER_TEST_PDF_URL")
 
 E2E_TIMEOUT_S = float(os.getenv("NEUROLINKER_E2E_TIMEOUT_S", "600"))
@@ -25,7 +25,7 @@ E2E_TIMEOUT_S = float(os.getenv("NEUROLINKER_E2E_TIMEOUT_S", "600"))
 
 pytestmark = pytest.mark.skipif(
     not TOKEN or not PDF_URL,
-    reason="Set NEUROLINKER_TOKEN and NEUROLINKER_TEST_PDF_URL to run URL E2E tests.",
+    reason="Set NEUROLINKER_API_KEY and NEUROLINKER_TEST_PDF_URL to run URL E2E tests.",
 )
 
 

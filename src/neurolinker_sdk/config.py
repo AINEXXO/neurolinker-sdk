@@ -31,7 +31,7 @@ class NeuroLinkerConfig:
     @staticmethod
     def from_env() -> "NeuroLinkerConfig":
         base_url = os.getenv("NEUROLINKER_BASE_URL", "").strip()
-        token = os.getenv("NEUROLINKER_TOKEN", "").strip()
+        token = os.getenv("NEUROLINKER_API_KEY", "").strip()
         timeout_s = float(os.getenv("NEUROLINKER_E2E_TIMEOUT_S", str(DEFAULT_TIMEOUT_S)))
         poll_interval_s = float(
             os.getenv("NEUROLINKER_E2E_POLL_INTERVAL_S", str(DEFAULT_POLL_INTERVAL_S))
@@ -41,7 +41,7 @@ class NeuroLinkerConfig:
         )
 
         if not token:
-            raise NeuroLinkerConfigError("NEUROLINKER_TOKEN is not set.")
+            raise NeuroLinkerConfigError("NEUROLINKER_API_KEY is not set.")
 
         if not base_url:
             base_url = DEFAULT_BASE_URL

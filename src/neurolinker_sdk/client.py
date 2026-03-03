@@ -140,7 +140,7 @@ class NeuroLinker:
             if status is None and isinstance(last.get("data"), dict):
                 status = last["data"].get("status")
 
-            if status in ("completed", "failed", "partial"):
+            if status in ("completed", "failed", "pending"):
                 return last
 
             time.sleep(interval)
@@ -252,7 +252,7 @@ class AsyncNeuroLinker:
             if status is None and isinstance(last.get("data"), dict):
                 status = last["data"].get("status")
 
-            if status in ("completed", "failed", "partial"):
+            if status in ("completed", "failed", "pending"):
                 return last
 
             await asyncio.sleep(interval)

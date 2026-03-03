@@ -10,7 +10,7 @@ from neurolinker_sdk.errors import NeuroLinkerConfigError
 
 
 def test_from_env_requires_token(monkeypatch):
-    monkeypatch.delenv("NEUROLINKER_TOKEN", raising=False)
+    monkeypatch.delenv("NEUROLINKER_API_KEY", raising=False)
     monkeypatch.delenv("NEUROLINKER_BASE_URL", raising=False)
 
     with pytest.raises(NeuroLinkerConfigError):
@@ -18,7 +18,7 @@ def test_from_env_requires_token(monkeypatch):
 
 
 def test_from_env_uses_default_base_url_when_missing(monkeypatch):
-    monkeypatch.setenv("NEUROLINKER_TOKEN", "nl_dummy")
+    monkeypatch.setenv("NEUROLINKER_API_KEY", "nl_dummy")
     monkeypatch.delenv("NEUROLINKER_BASE_URL", raising=False)
     monkeypatch.delenv("NEUROLINKER_E2E_TIMEOUT_S", raising=False)
     monkeypatch.delenv("NEUROLINKER_E2E_POLL_INTERVAL_S", raising=False)
@@ -33,7 +33,7 @@ def test_from_env_uses_default_base_url_when_missing(monkeypatch):
 
 
 def test_from_env_respects_custom_base_url(monkeypatch):
-    monkeypatch.setenv("NEUROLINKER_TOKEN", "nl_dummy")
+    monkeypatch.setenv("NEUROLINKER_API_KEY", "nl_dummy")
     monkeypatch.setenv("NEUROLINKER_BASE_URL", "https://example.com/neurolinker/")
     monkeypatch.setenv("NEUROLINKER_E2E_TIMEOUT_S", "123")
     monkeypatch.setenv("NEUROLINKER_E2E_POLL_INTERVAL_S", "1.5")
