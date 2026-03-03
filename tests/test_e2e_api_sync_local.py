@@ -188,7 +188,7 @@ def test_e2e_local_pdfs_sync():
         res_md = client.documents.markdown(doc_ids)
         _assert_documents_results_schema(res_md)
 
-        res_sum = client.documents.summary(doc_ids)
+        res_sum = client.documents.document_summary(doc_ids)
         _assert_documents_results_schema(res_sum)
 
         res_pages = client.documents.page_summaries(doc_ids)

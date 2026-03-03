@@ -153,8 +153,8 @@ Retrieve a single consolidated section summary.
 - `from neurolinker_sdk.resources.documents import ContentType`
 Use `ContentType.TEXT`, `ContentType.FORMULA`, `ContentType.TABLES`, `ContentType.IMAGES` to filter content returned by markdown/json endpoints.
 
-- `client.zip.make_zip(job_uid, document_uid=None, local_images=False)`
-Request a ZIP archive for a completed extraction job (entire job or a single document). If `local_images=True` then the images will be stored locally.
+- `client.zip.make_zip(job_uid, document_uid=None, local_images=False, content_types=["text"] )`
+Request a ZIP archive for a completed extraction job (entire job or a single document). If `local_images=True` then the images will be stored locally. `content_types=["text"]` refers to the "ContentType" defined above. Only `job_uid` is mandatory.
 
 
 - `NeuroLinkerAPIError`, `NeuroLinkerConfigError`
