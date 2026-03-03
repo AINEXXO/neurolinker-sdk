@@ -36,6 +36,6 @@ async def test_e2e_without_from_env() -> None:
         assert document_ids, f"No document IDs found in status response: {status_resp}"
 
         # Fetch one endpoint to validate the end-to-end flow.
-        result = await client.documents.document_summary(document_ids)
+        result = await client.documents.document_summary(document_ids, summary_type="page")
         assert result.get("success") is True
         assert isinstance(result.get("results"), list)
