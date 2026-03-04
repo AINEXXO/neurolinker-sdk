@@ -35,13 +35,14 @@ uv run pytest
 
 **Usage**
 
-Set credentials preferably into a .env file (token is required; NEUROLINKER_BASE_URL is optional and defaults to the public deployment).
+Set credentials preferably into a .env file (token is required).
 
-`NEUROLINKER_API_KEY` (required) : generate it from the official neurolinker website https://neurolinker.ainexxo.com/ - Login and go to the API KEY section.
-`NEUROLINKER_BASE_URL` (optional) defaults to `https://neurolinker.api.ainexxo.com`.
+`NEUROLINKER_API_KEY` (required): generate it from the official neurolinker website https://neurolinker.ainexxo.com/ - Login and go to the API KEY section.
+`NEUROLINKER_BASE_URL` (optional): when set, it becomes the default API endpoint for the SDK. If not set, the SDK defaults to `https://neurolinker.api.ainexxo.com`.
 
 ```bash
 export NEUROLINKER_API_KEY="your_token"
+# Optional (override default API endpoint)
 export NEUROLINKER_BASE_URL="https://neurolinker.api.ainexxo.com"
 ```
 
@@ -86,11 +87,11 @@ async with AsyncNeuroLinker.from_env() as client:
  SDK functionality (minimal usage + parameters).
  These are the ways to define a client before it get used.
 
-- `NeuroLinker(token, base_url="https://neurolinker.api.ainexxo.com", timeout_s=600.0, poll_interval_s=2.0, poll_max_interval_s=10.0, http_client=None)`
-Minimal sync client constructor. You can pass only `token`; other parameters are optional.
+- `NeuroLinker(token, base_url=None, timeout_s=600.0, poll_interval_s=2.0, poll_max_interval_s=10.0, http_client=None)`
+Minimal sync client constructor. You can pass only `token`, other parameters are optional; if `base_url` is not provided, the SDK uses `NEUROLINKER_BASE_URL` when set, otherwise it defaults to `https://neurolinker.api.ainexxo.com`. 
 
-- `AsyncNeuroLinker(token, base_url="https://neurolinker.api.ainexxo.com", timeout_s=600.0, poll_interval_s=2.0, poll_max_interval_s=10.0, http_client=None)`
-Minimal async client constructor. You can pass only `token`; other parameters are optional.
+- `AsyncNeuroLinker(token, base_url=None, timeout_s=600.0, poll_interval_s=2.0, poll_max_interval_s=10.0, http_client=None)`
+Minimal async client constructor. You can pass only `token`, other parameters are optional; if `base_url` is not provided, the SDK uses `NEUROLINKER_BASE_URL` when set, otherwise it defaults to `https://neurolinker.api.ainexxo.com`.
 
 Or if you want to define .env file you can override these parameters:
 
@@ -141,21 +142,17 @@ Retrieve extracted image metadata for document IDs.
 - `client.documents.page_summaries(document_ids)`
 Retrieve per-page summaries.
 
-- `client.documents.summary(document_ids)`
-Retrieve a document-level summary.
-
 - `client.documents.section_summaries(document_ids)`
 Retrieve summaries grouped by detected sections.
 
-- `client.documents.section_summary(document_ids)`
-Retrieve a single consolidated section summary.
+- `client.documents.document_summary(document_ids, summary_type="page" | "section")`
+Retrieve a single consolidated summary. `summary_type` is required and supports `page` or `section`.
 
 - `from neurolinker_sdk.resources.documents import ContentType`
 Use `ContentType.TEXT`, `ContentType.FORMULA`, `ContentType.TABLES`, `ContentType.IMAGES` to filter content returned by markdown/json endpoints.
 
-- `client.zip.make_zip(job_uid, document_uid=None, local_images=False, content_types=["text"] )`
-Request a ZIP archive for a completed extraction job (entire job or a single document). If `local_images=True` then the images will be stored locally. `content_types=["text"]` refers to the "ContentType" defined above. Only `job_uid` is mandatory.
-
+- `client.zip.make_zip(job_uid="...", document_uid=None, local_images=False, content_types=None)`
+Request a ZIP archive for a completed extraction job (entire job or a single document). `job_uid` maps to a generic extraction; if `document_uid` is set, it maps to a specific document to download. With `local_images=True`, JSON/Markdown references are rewritten to local relative image paths. `content_types` is optional (example: `["text"]` or others `ContentType`) and filters JSON/Markdown content included in the ZIP.
 
 - `NeuroLinkerAPIError`, `NeuroLinkerConfigError`
 Exceptions raised for non-2xx API responses or missing/invalid configuration.
@@ -163,7 +160,12 @@ Exceptions raised for non-2xx API responses or missing/invalid configuration.
 Tests in this repository cover sync and async flows, URL-based extraction, local file uploads, section endpoints, content type filters, and ZIP creation. See the `tests/` directory. The E2E tests use these environment variables:
 
 - `NEUROLINKER_API_KEY` (required) : generate it from the official neurolinker website https://neurolinker.ainexxo.com/ - login and go to the API KEY section.
-- `NEUROLINKER_TEST_PDF_URL` (required for URL-based E2E) : Its a web url of a pdf that can be downloaded from the backend.
+
+- `NEUROLINKER_BASE_URL` (optional): overrides the default API endpoint used by the SDK (also applies when `base_url` is not passed explicitly).
+
+- `NEUROLINKER_TEST_PDF_URL` (required for URL-based E2E tests) : Its a web url of a pdf that can be downloaded from the backend.
 Example: "https://arxiv.org/pdf/..." 
-- `NEUROLINKER_TEST_PDF_PATH` or `NEUROLINKER_TEST_PDF_PATHS` (required for local upload E2E); Its the local path of a pdf. Example: "<local_path>/mypdf1.pdf" and "<local_path>/mypdf2.pdf,<local_path>/mypdf3.pdf"
-- `NEUROLINKER_E2E_TIMEOUT_S`, `NEUROLINKER_E2E_POLL_INTERVAL_S`, `NEUROLINKER_E2E_POLL_MAX_INTERVAL_S` (optional): defaults are `600`, `2`, `10`. These values are used by `from_env()` and by request polling helpers.
+
+- `NEUROLINKER_TEST_PDF_PATH` or `NEUROLINKER_TEST_PDF_PATHS` (required for local upload E2E tests); Its the local path of a pdf. Example: "<local_path>/mypdf1.pdf" and "<local_path>/mypdf2.pdf,<local_path>/mypdf3.pdf"
+
+- `NEUROLINKER_E2E_TIMEOUT_S`, `NEUROLINKER_E2E_POLL_INTERVAL_S`, `NEUROLINKER_E2E_POLL_MAX_INTERVAL_S` (optional - but adjust them on your needs ): defaults are `600`, `2`, `10`. These values are used by `from_env()` and by request polling helpers.
