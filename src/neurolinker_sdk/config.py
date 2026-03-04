@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from .errors import NeuroLinkerConfigError
 
 # Canonical/public NeuroLinker deployment.
-DEFAULT_BASE_URL = "https://neurolinker.api.ainexxo.com"
+DEFAULT_BASE_URL = os.getenv("NEUROLINKER_BASE_URL", "https://neurolinker.api.ainexxo.com")
 DEFAULT_TIMEOUT_S = 600.0
 DEFAULT_POLL_INTERVAL_S = 2.0
 DEFAULT_POLL_MAX_INTERVAL_S = 10.0

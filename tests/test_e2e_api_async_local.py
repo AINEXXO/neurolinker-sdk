@@ -144,7 +144,7 @@ async def test_e2e_local_pdfs_async():
         res_md = await client.documents.markdown(doc_ids)
         _assert_documents_results_schema(res_md)
 
-        res_sum = await client.documents.summary(doc_ids)
+        res_sum = await client.documents.document_summary(doc_ids, summary_type="page")
         _assert_documents_results_schema(res_sum)
 
         res_pages = await client.documents.page_summaries(doc_ids)

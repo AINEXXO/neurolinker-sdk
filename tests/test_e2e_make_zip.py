@@ -15,7 +15,7 @@ from test_e2e_api_sync_local import (
 
 TOKEN = os.getenv("NEUROLINKER_API_KEY")
 PDF_URL = os.getenv("NEUROLINKER_TEST_PDF_URL")
-
+NEUROLINKER_BASE_URL = os.getenv("NEUROLINKER_BASE_URL")
 E2E_TIMEOUT_S = float(os.getenv("NEUROLINKER_E2E_TIMEOUT_S", "600"))
 
 pytestmark = pytest.mark.skipif(
@@ -34,7 +34,7 @@ async def test_make_zip_async() -> None:
       3) call make-zip for the whole job
       4) call make-zip for a single document
     """
-    async with AsyncNeuroLinker.from_env(timeout_s=E2E_TIMEOUT_S) as client:
+    async with AsyncNeuroLinker(token=TOKEN, base_url=NEUROLINKER_BASE_URL).from_env(timeout_s=E2E_TIMEOUT_S) as client:
         # 1) Submit extract request
         extract_resp = await client.extract.extract(
             urls=[PDF_URL],
@@ -48,7 +48,10 @@ async def test_make_zip_async() -> None:
         assert doc_ids, f"No document ids found in request-status: {status_resp}"
 
         # 3) make-zip for the entire job
-        job_zip = await client.zip.make_zip(job_uid=request_uid, local_images=True)
+        job_zip = await client.zip.make_zip(
+            job_uid=request_uid,
+            local_images=True,
+        )
         assert isinstance(job_zip, dict)
         assert job_zip.get("success") is True
         assert isinstance(job_zip.get("url"), str)
@@ -58,7 +61,11 @@ async def test_make_zip_async() -> None:
         print(f"[ASYNC] Job ZIP URL: {job_zip['url']}")
 
         # 4) make-zip for a single document
-        doc_zip = await client.zip.make_zip(job_uid=request_uid, document_uid=doc_ids[0])
+        doc_zip = await client.zip.make_zip(
+            job_uid=request_uid,
+            document_uid=doc_ids[0],
+            content_types=["text"],
+        )
         assert isinstance(doc_zip, dict)
         assert doc_zip.get("success") is True
         assert isinstance(doc_zip.get("url"), str)
@@ -86,7 +93,11 @@ def test_make_zip_sync() -> None:
         assert doc_ids, f"No document ids found in request-status: {status_resp}"
 
         # 3) make-zip for the entire job
-        job_zip = client.zip.make_zip(job_uid=request_uid)
+        job_zip = client.zip.make_zip(
+            job_uid=request_uid,
+            # New endpoint capability: filter JSON/MD output by content type
+            content_types=["text"],
+        )
         assert isinstance(job_zip, dict)
         assert job_zip.get("success") is True
         assert isinstance(job_zip.get("url"), str)
@@ -95,7 +106,11 @@ def test_make_zip_sync() -> None:
         print(f"[SYNC] Job ZIP URL: {job_zip['url']}")
 
         # 4) make-zip for a single document
-        doc_zip = client.zip.make_zip(job_uid=request_uid, document_uid=doc_ids[0])
+        doc_zip = client.zip.make_zip(
+            job_uid=request_uid,
+            document_uid=doc_ids[0],
+            content_types=["text"],
+        )
         assert isinstance(doc_zip, dict)
         assert doc_zip.get("success") is True
         assert isinstance(doc_zip.get("url"), str)
