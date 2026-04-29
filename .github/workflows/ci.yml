@@ -6,7 +6,7 @@ on:
   # pull_request:
   #   branches: [main, dev]
   workflow_dispatch: {}
-  
+
 
 jobs:
   tests:
@@ -35,12 +35,22 @@ jobs:
 
       # optional: if you want to create a .env with some secrets
       - name: Create .env from GitHub secrets and variables
+        env:
+          NEUROLINKER_API_KEY: ${{ secrets.NEUROLINKER_API_KEY }}
+          NEUROLINKER_TEST_VECTOR_DB_API_KEY: ${{ secrets.NEUROLINKER_TEST_VECTOR_DB_API_KEY }}
+          NEUROLINKER_BASE_URL: ${{ vars.NEUROLINKER_BASE_URL }}
+          NEUROLINKER_TEST_PDF_URL: ${{ vars.NEUROLINKER_TEST_PDF_URL }}
+          NEUROLINKER_TEST_BUCKET_UID: ${{ vars.NEUROLINKER_TEST_BUCKET_UID }}
+          NEUROLINKER_TEST_VECTOR_DB_URI: ${{ vars.NEUROLINKER_TEST_VECTOR_DB_URI }}
         run: |
-          cat <<EOF > .env
-          NEUROLINKER_BASE_URL=${{ vars.NEUROLINKER_BASE_URL }}
-          NEUROLINKER_API_KEY=${{ secrets.NEUROLINKER_API_KEY }}
-          NEUROLINKER_TEST_PDF_URL=${{ vars.NEUROLINKER_TEST_PDF_URL }}
-          EOF
+          {
+            printf 'NEUROLINKER_BASE_URL=%s\n' "$NEUROLINKER_BASE_URL"
+            printf 'NEUROLINKER_API_KEY=%s\n' "$NEUROLINKER_API_KEY"
+            printf 'NEUROLINKER_TEST_PDF_URL=%s\n' "$NEUROLINKER_TEST_PDF_URL"
+            printf 'NEUROLINKER_TEST_BUCKET_UID=%s\n' "$NEUROLINKER_TEST_BUCKET_UID"
+            printf 'NEUROLINKER_TEST_VECTOR_DB_URI=%s\n' "$NEUROLINKER_TEST_VECTOR_DB_URI"
+            printf 'NEUROLINKER_TEST_VECTOR_DB_API_KEY=%s\n' "$NEUROLINKER_TEST_VECTOR_DB_API_KEY"
+          } > .env
 
       - name: Run tests
         run: uv run pytest

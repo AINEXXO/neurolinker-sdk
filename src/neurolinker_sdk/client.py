@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import asyncio
-import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
 
@@ -13,44 +11,462 @@ from .config import (
     DEFAULT_TIMEOUT_S,
     NeuroLinkerConfig,
 )
-from .errors import NeuroLinkerAPIError
-from .resources.documents import AsyncDocumentsResource, DocumentsResource
-from .resources.extract import AsyncExtractResource, ExtractResource
-from .resources.status import AsyncStatusResource, StatusResource
-from .resources.tasks import AsyncTasksResource, TasksResource
-from .resources.zip import AsyncZipResource, ZipResource
+from .polling import wait_for_terminal_status, wait_for_terminal_status_async
+from .chunking.analyze import AnalyzeResource, AsyncAnalyzeResource
+from .chunking.results import AsyncResultsResource, ResultsResource
+from .chunking.jobs import (
+    AsyncJobsResource as AsyncChunkingJobsResource,
+)
+from .chunking.jobs import JobsResource as ChunkingJobsResource
+from .embedding.results import (
+    AsyncResultsResource as AsyncEmbeddingResultsResource,
+)
+from .embedding.results import ResultsResource as EmbeddingResultsResource
+from .embedding.jobs import (
+    AsyncJobsResource as AsyncEmbeddingJobsResource,
+)
+from .embedding.jobs import JobsResource as EmbeddingJobsResource
+from .embedding.models_api import (
+    AsyncModelsResource as AsyncEmbeddingModelsResource,
+)
+from .embedding.models_api import ModelsResource as EmbeddingModelsResource
+from .extraction.documents import AsyncDocumentsResource, DocumentsResource
+from .extraction.extract import AsyncExtractResource, ExtractResource
+from .extraction.helpers import extract_status
+from .extraction.status import AsyncStatusResource, StatusResource
+from .extraction.tasks import AsyncTasksResource, TasksResource
+from .extraction.zip import AsyncZipResource, ZipResource
+from .management.buckets import AsyncBucketsResource, BucketsResource
+from .management.secrets import AsyncSecretsResource, SecretsResource
+from .vector_store.collections import (
+    AsyncCollectionsResource as AsyncVectorStoreCollectionsResource,
+)
+from .vector_store.collections import (
+    CollectionsResource as VectorStoreCollectionsResource,
+)
+from .vector_store.jobs import (
+    AsyncJobsResource as AsyncVectorStoreJobsResource,
+)
+from .vector_store.jobs import JobsResource as VectorStoreJobsResource
 
 
-def _extract_request_uid(extract_response: Dict[str, Any]) -> str:
-    """Extract request UID from an extract endpoint payload."""
-    if isinstance(extract_response.get("request_uid"), str):
-        return extract_response["request_uid"]
+def _extraction_timeout_suffix(last: Optional[Dict[str, Any]]) -> str:
+    """Return ``" Job URL: <url>"`` from a request-status payload, or ``""``."""
+    if not isinstance(last, dict):
+        return ""
+    url = last.get("job_page_url")
+    if not url:
+        data = last.get("data")
+        if isinstance(data, dict):
+            url = data.get("job_page_url")
+    return f" Job URL: {url}" if url else ""
 
-    data = extract_response.get("data")
-    if isinstance(data, dict) and isinstance(data.get("request_uid"), str):
-        return data["request_uid"]
 
-    raise ValueError(f"Could not find request_uid in extract response: {extract_response}")
+class ExtractionModule:
+    """Extraction module — full and field extraction."""
+
+    def __init__(
+        self,
+        *,
+        base_url: str,
+        token: str,
+        client: httpx.Client,
+        timeout_s: float,
+        poll_interval_s: float,
+        poll_max_interval_s: float,
+    ):
+        self._extract = ExtractResource(base_url, token, client)
+        self._tasks = TasksResource(base_url, token, client)
+        self._zip = ZipResource(base_url, token, client)
+        self.status = StatusResource(base_url, token, client)
+        self.documents = DocumentsResource(base_url, token, client)
+
+        self._timeout_s = timeout_s
+        self._poll_interval_s = poll_interval_s
+        self._poll_max_interval_s = poll_max_interval_s
+
+    def extract(
+        self,
+        *,
+        documents: Optional[List[Tuple[str, bytes]]] = None,
+        urls: Optional[List[str]] = None,
+        alias: Optional[str] = None,
+        description: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        return self._extract.extract(
+            documents=documents, urls=urls, alias=alias, description=description
+        )
+
+    def extract_fields(
+        self,
+        *,
+        json_schema: Dict[str, Any],
+        documents: Optional[List[Tuple[str, bytes]]] = None,
+        urls: Optional[List[str]] = None,
+        alias: Optional[str] = None,
+        description: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        return self._extract.extract_fields(
+            json_schema=json_schema,
+            documents=documents,
+            urls=urls,
+            alias=alias,
+            description=description,
+        )
+
+    def generate_schema(self, *, description: str) -> Dict[str, Any]:
+        return self._extract.generate_schema(description=description)
+
+    def list_tasks(self) -> Dict[str, Any]:
+        return self._tasks.list()
+
+    def make_zip(
+        self,
+        *,
+        job_uid: str,
+        document_uid: Optional[str] = None,
+        local_images: bool = False,
+        content_types: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        return self._zip.make_zip(
+            job_uid=job_uid,
+            document_uid=document_uid,
+            local_images=local_images,
+            content_types=content_types,
+        )
+
+    def wait_for_request(
+        self,
+        request_uid: str,
+        *,
+        timeout_s: Optional[float] = None,
+        poll_interval_s: Optional[float] = None,
+        poll_max_interval_s: Optional[float] = None,
+    ) -> Dict[str, Any]:
+        """Poll ``/request-status/{request_uid}`` until a terminal state or timeout."""
+        return wait_for_terminal_status(
+            fetch_status=lambda: self.status.request(request_uid),
+            extract_status=extract_status,
+            timeout_s=self._timeout_s if timeout_s is None else timeout_s,
+            poll_interval_s=(
+                self._poll_interval_s if poll_interval_s is None else poll_interval_s
+            ),
+            poll_max_interval_s=(
+                self._poll_max_interval_s
+                if poll_max_interval_s is None
+                else poll_max_interval_s
+            ),
+            identifier=f"request {request_uid}",
+            timeout_context=_extraction_timeout_suffix,
+        )
 
 
-def _extract_document_ids_from_request_status(status_response: Dict[str, Any]) -> list[str]:
-    """Extract document IDs from request-status payload with minimal shape assumptions."""
-    documents = status_response.get("documents")
-    if documents is None and isinstance(status_response.get("data"), dict):
-        documents = status_response["data"].get("documents")
+class AsyncExtractionModule:
+    def __init__(
+        self,
+        *,
+        base_url: str,
+        token: str,
+        client: httpx.AsyncClient,
+        timeout_s: float,
+        poll_interval_s: float,
+        poll_max_interval_s: float,
+    ):
+        self._extract = AsyncExtractResource(base_url, token, client)
+        self._tasks = AsyncTasksResource(base_url, token, client)
+        self._zip = AsyncZipResource(base_url, token, client)
+        self.status = AsyncStatusResource(base_url, token, client)
+        self.documents = AsyncDocumentsResource(base_url, token, client)
 
-    if not isinstance(documents, list):
-        return []
+        self._timeout_s = timeout_s
+        self._poll_interval_s = poll_interval_s
+        self._poll_max_interval_s = poll_max_interval_s
 
-    out: list[str] = []
-    for item in documents:
-        if not isinstance(item, dict):
-            continue
-        if isinstance(item.get("document_id"), str):
-            out.append(item["document_id"])
-        elif isinstance(item.get("id"), str):
-            out.append(item["id"])
-    return out
+    async def extract(
+        self,
+        *,
+        documents: Optional[List[Tuple[str, bytes]]] = None,
+        urls: Optional[List[str]] = None,
+        alias: Optional[str] = None,
+        description: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        return await self._extract.extract(
+            documents=documents, urls=urls, alias=alias, description=description
+        )
+
+    async def extract_fields(
+        self,
+        *,
+        json_schema: Dict[str, Any],
+        documents: Optional[List[Tuple[str, bytes]]] = None,
+        urls: Optional[List[str]] = None,
+        alias: Optional[str] = None,
+        description: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        return await self._extract.extract_fields(
+            json_schema=json_schema,
+            documents=documents,
+            urls=urls,
+            alias=alias,
+            description=description,
+        )
+
+    async def generate_schema(self, *, description: str) -> Dict[str, Any]:
+        return await self._extract.generate_schema(description=description)
+
+    async def list_tasks(self) -> Dict[str, Any]:
+        return await self._tasks.list()
+
+    async def make_zip(
+        self,
+        *,
+        job_uid: str,
+        document_uid: Optional[str] = None,
+        local_images: bool = False,
+        content_types: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        return await self._zip.make_zip(
+            job_uid=job_uid,
+            document_uid=document_uid,
+            local_images=local_images,
+            content_types=content_types,
+        )
+
+    async def wait_for_request(
+        self,
+        request_uid: str,
+        *,
+        timeout_s: Optional[float] = None,
+        poll_interval_s: Optional[float] = None,
+        poll_max_interval_s: Optional[float] = None,
+    ) -> Dict[str, Any]:
+        async def _fetch() -> Dict[str, Any]:
+            return await self.status.request(request_uid)
+
+        return await wait_for_terminal_status_async(
+            fetch_status=_fetch,
+            extract_status=extract_status,
+            timeout_s=self._timeout_s if timeout_s is None else timeout_s,
+            poll_interval_s=(
+                self._poll_interval_s if poll_interval_s is None else poll_interval_s
+            ),
+            poll_max_interval_s=(
+                self._poll_max_interval_s
+                if poll_max_interval_s is None
+                else poll_max_interval_s
+            ),
+            identifier=f"request {request_uid}",
+            timeout_context=_extraction_timeout_suffix,
+        )
+
+
+class ChunkingModule:
+    """Chunking module — job submission, analysis, signed-URL results."""
+
+    def __init__(
+        self,
+        *,
+        base_url: str,
+        token: str,
+        client: httpx.Client,
+        timeout_s: float,
+        poll_interval_s: float,
+        poll_max_interval_s: float,
+    ):
+        self.jobs = ChunkingJobsResource(
+            base_url,
+            token,
+            client,
+            timeout_s=timeout_s,
+            poll_interval_s=poll_interval_s,
+            poll_max_interval_s=poll_max_interval_s,
+        )
+        self._analyze = AnalyzeResource(base_url, token, client)
+        self._results = ResultsResource(base_url, token, client)
+
+    def analyze(self, bucket_uid: str) -> Dict[str, Any]:
+        """POST /v1/chunk/analyze.
+
+        Generates statistics and a distribution plot, returns a `ResultsResponse`
+        whose ``result.files`` maps the filenames (`chunking_statistics.json`,
+        `chunking_distribution.png`) to short-lived signed URLs.
+        """
+        return self._analyze.analyze(bucket_uid)
+
+    def results(self, bucket_uid: str) -> Dict[str, bytes]:
+        """POST /v1/chunk/results then fetch each signed URL.
+
+        Returns ``{filename: bytes}``. File bytes transit directly between the
+        client and the storage backend, not through the API server.
+        """
+        return self._results.results(bucket_uid)
+
+
+class AsyncChunkingModule:
+    def __init__(
+        self,
+        *,
+        base_url: str,
+        token: str,
+        client: httpx.AsyncClient,
+        timeout_s: float,
+        poll_interval_s: float,
+        poll_max_interval_s: float,
+    ):
+        self.jobs = AsyncChunkingJobsResource(
+            base_url,
+            token,
+            client,
+            timeout_s=timeout_s,
+            poll_interval_s=poll_interval_s,
+            poll_max_interval_s=poll_max_interval_s,
+        )
+        self._analyze = AsyncAnalyzeResource(base_url, token, client)
+        self._results = AsyncResultsResource(base_url, token, client)
+
+    async def analyze(self, bucket_uid: str) -> Dict[str, Any]:
+        return await self._analyze.analyze(bucket_uid)
+
+    async def results(self, bucket_uid: str) -> Dict[str, bytes]:
+        return await self._results.results(bucket_uid)
+
+
+class EmbeddingModule:
+    """Embedding module — job submission, model listing, signed-URL results."""
+
+    def __init__(
+        self,
+        *,
+        base_url: str,
+        token: str,
+        client: httpx.Client,
+        timeout_s: float,
+        poll_interval_s: float,
+        poll_max_interval_s: float,
+    ):
+        self.jobs = EmbeddingJobsResource(
+            base_url,
+            token,
+            client,
+            timeout_s=timeout_s,
+            poll_interval_s=poll_interval_s,
+            poll_max_interval_s=poll_max_interval_s,
+        )
+        self._models = EmbeddingModelsResource(base_url, token, client)
+        self._results = EmbeddingResultsResource(base_url, token, client)
+
+    def list_models(self) -> Dict[str, Any]:
+        """GET /v1/embed/models — list internal embedding models."""
+        return self._models.list()
+
+    def results(self, bucket_uid: str) -> Dict[str, bytes]:
+        """POST /v1/embed/results then fetch each signed URL.
+
+        Returns ``{filename: bytes}``. File bytes transit directly between the
+        client and the storage backend, not through the API server.
+        """
+        return self._results.results(bucket_uid)
+
+
+class AsyncEmbeddingModule:
+    def __init__(
+        self,
+        *,
+        base_url: str,
+        token: str,
+        client: httpx.AsyncClient,
+        timeout_s: float,
+        poll_interval_s: float,
+        poll_max_interval_s: float,
+    ):
+        self.jobs = AsyncEmbeddingJobsResource(
+            base_url,
+            token,
+            client,
+            timeout_s=timeout_s,
+            poll_interval_s=poll_interval_s,
+            poll_max_interval_s=poll_max_interval_s,
+        )
+        self._models = AsyncEmbeddingModelsResource(base_url, token, client)
+        self._results = AsyncEmbeddingResultsResource(base_url, token, client)
+
+    async def list_models(self) -> Dict[str, Any]:
+        return await self._models.list()
+
+    async def results(self, bucket_uid: str) -> Dict[str, bytes]:
+        return await self._results.results(bucket_uid)
+
+
+class ManagementModule:
+    """Management module — bucket and secret CRUD."""
+
+    def __init__(
+        self,
+        *,
+        base_url: str,
+        token: str,
+        client: httpx.Client,
+    ):
+        self.buckets = BucketsResource(base_url, token, client)
+        self.secrets = SecretsResource(base_url, token, client)
+
+
+class AsyncManagementModule:
+    def __init__(
+        self,
+        *,
+        base_url: str,
+        token: str,
+        client: httpx.AsyncClient,
+    ):
+        self.buckets = AsyncBucketsResource(base_url, token, client)
+        self.secrets = AsyncSecretsResource(base_url, token, client)
+
+
+class VectorStoreModule:
+    """Vector Store module — collection creation and async vector-load jobs."""
+
+    def __init__(
+        self,
+        *,
+        base_url: str,
+        token: str,
+        client: httpx.Client,
+        timeout_s: float,
+        poll_interval_s: float,
+        poll_max_interval_s: float,
+    ):
+        self.collections = VectorStoreCollectionsResource(base_url, token, client)
+        self.jobs = VectorStoreJobsResource(
+            base_url,
+            token,
+            client,
+            timeout_s=timeout_s,
+            poll_interval_s=poll_interval_s,
+            poll_max_interval_s=poll_max_interval_s,
+        )
+
+
+class AsyncVectorStoreModule:
+    def __init__(
+        self,
+        *,
+        base_url: str,
+        token: str,
+        client: httpx.AsyncClient,
+        timeout_s: float,
+        poll_interval_s: float,
+        poll_max_interval_s: float,
+    ):
+        self.collections = AsyncVectorStoreCollectionsResource(base_url, token, client)
+        self.jobs = AsyncVectorStoreJobsResource(
+            base_url,
+            token,
+            client,
+            timeout_s=timeout_s,
+            poll_interval_s=poll_interval_s,
+            poll_max_interval_s=poll_max_interval_s,
+        )
 
 
 class NeuroLinker:
@@ -78,11 +494,43 @@ class NeuroLinker:
 
         self._client = http_client or httpx.Client(timeout=timeout_s)
 
-        self.tasks = TasksResource(self._base_url, self._token, self._client)
-        self.status = StatusResource(self._base_url, self._token, self._client)
-        self.documents = DocumentsResource(self._base_url, self._token, self._client)
-        self.extract = ExtractResource(self._base_url, self._token, self._client)
-        self.zip = ZipResource(self._base_url, self._token, self._client)
+        self.extraction = ExtractionModule(
+            base_url=self._base_url,
+            token=self._token,
+            client=self._client,
+            timeout_s=self._timeout_s,
+            poll_interval_s=self._poll_interval_s,
+            poll_max_interval_s=self._poll_max_interval_s,
+        )
+        self.chunking = ChunkingModule(
+            base_url=self._base_url,
+            token=self._token,
+            client=self._client,
+            timeout_s=self._timeout_s,
+            poll_interval_s=self._poll_interval_s,
+            poll_max_interval_s=self._poll_max_interval_s,
+        )
+        self.embedding = EmbeddingModule(
+            base_url=self._base_url,
+            token=self._token,
+            client=self._client,
+            timeout_s=self._timeout_s,
+            poll_interval_s=self._poll_interval_s,
+            poll_max_interval_s=self._poll_max_interval_s,
+        )
+        self.management = ManagementModule(
+            base_url=self._base_url,
+            token=self._token,
+            client=self._client,
+        )
+        self.vector_store = VectorStoreModule(
+            base_url=self._base_url,
+            token=self._token,
+            client=self._client,
+            timeout_s=self._timeout_s,
+            poll_interval_s=self._poll_interval_s,
+            poll_max_interval_s=self._poll_max_interval_s,
+        )
 
     @staticmethod
     def from_env(
@@ -99,60 +547,6 @@ class NeuroLinker:
             poll_max_interval_s=(
                 cfg.poll_max_interval_s if poll_max_interval_s is None else poll_max_interval_s
             ),
-        )
-
-    @staticmethod
-    def extract_request_uid(extract_response: Dict[str, Any]) -> str:
-        return _extract_request_uid(extract_response)
-
-    @staticmethod
-    def extract_document_ids(status_response: Dict[str, Any]) -> list[str]:
-        return _extract_document_ids_from_request_status(status_response)
-
-    def wait_for_request_completion(
-        self,
-        request_uid: str,
-        *,
-        timeout_s: Optional[float] = None,
-        poll_interval_s: Optional[float] = None,
-        poll_max_interval_s: Optional[float] = None,
-    ) -> Dict[str, Any]:
-        """Poll request-status until a terminal state or timeout."""
-        wait_timeout_s = self._timeout_s if timeout_s is None else timeout_s
-        interval = self._poll_interval_s if poll_interval_s is None else poll_interval_s
-        max_interval = (
-            self._poll_max_interval_s if poll_max_interval_s is None else poll_max_interval_s
-        )
-        deadline = time.time() + wait_timeout_s
-        last: Optional[Dict[str, Any]] = None
-
-        while time.time() < deadline:
-            try:
-                last = self.status.request(request_uid)
-            except NeuroLinkerAPIError as exc:
-                if exc.status_code == 404:
-                    time.sleep(interval)
-                    interval = min(max_interval, interval * 1.5)
-                    continue
-                raise
-
-            status = last.get("status")
-            if status is None and isinstance(last.get("data"), dict):
-                status = last["data"].get("status")
-
-            if status in ("completed", "failed", "pending"):
-                return last
-
-            time.sleep(interval)
-            interval = min(max_interval, interval * 1.2)
-
-        job_url = None
-        if isinstance(last, dict):
-            job_url = last.get("job_page_url") or (last.get("data", {}) or {}).get("job_page_url")
-
-        raise TimeoutError(
-            f"Timeout waiting for request {request_uid} after {wait_timeout_s}s. "
-            f"Last status: {last}. Job URL: {job_url}"
         )
 
     def close(self) -> None:
@@ -190,11 +584,43 @@ class AsyncNeuroLinker:
 
         self._client = http_client or httpx.AsyncClient(timeout=timeout_s)
 
-        self.tasks = AsyncTasksResource(self._base_url, self._token, self._client)
-        self.status = AsyncStatusResource(self._base_url, self._token, self._client)
-        self.documents = AsyncDocumentsResource(self._base_url, self._token, self._client)
-        self.extract = AsyncExtractResource(self._base_url, self._token, self._client)
-        self.zip = AsyncZipResource(self._base_url, self._token, self._client)
+        self.extraction = AsyncExtractionModule(
+            base_url=self._base_url,
+            token=self._token,
+            client=self._client,
+            timeout_s=self._timeout_s,
+            poll_interval_s=self._poll_interval_s,
+            poll_max_interval_s=self._poll_max_interval_s,
+        )
+        self.chunking = AsyncChunkingModule(
+            base_url=self._base_url,
+            token=self._token,
+            client=self._client,
+            timeout_s=self._timeout_s,
+            poll_interval_s=self._poll_interval_s,
+            poll_max_interval_s=self._poll_max_interval_s,
+        )
+        self.embedding = AsyncEmbeddingModule(
+            base_url=self._base_url,
+            token=self._token,
+            client=self._client,
+            timeout_s=self._timeout_s,
+            poll_interval_s=self._poll_interval_s,
+            poll_max_interval_s=self._poll_max_interval_s,
+        )
+        self.management = AsyncManagementModule(
+            base_url=self._base_url,
+            token=self._token,
+            client=self._client,
+        )
+        self.vector_store = AsyncVectorStoreModule(
+            base_url=self._base_url,
+            token=self._token,
+            client=self._client,
+            timeout_s=self._timeout_s,
+            poll_interval_s=self._poll_interval_s,
+            poll_max_interval_s=self._poll_max_interval_s,
+        )
 
     @staticmethod
     def from_env(
@@ -211,60 +637,6 @@ class AsyncNeuroLinker:
             poll_max_interval_s=(
                 cfg.poll_max_interval_s if poll_max_interval_s is None else poll_max_interval_s
             ),
-        )
-
-    @staticmethod
-    def extract_request_uid(extract_response: Dict[str, Any]) -> str:
-        return _extract_request_uid(extract_response)
-
-    @staticmethod
-    def extract_document_ids(status_response: Dict[str, Any]) -> list[str]:
-        return _extract_document_ids_from_request_status(status_response)
-
-    async def wait_for_request_completion(
-        self,
-        request_uid: str,
-        *,
-        timeout_s: Optional[float] = None,
-        poll_interval_s: Optional[float] = None,
-        poll_max_interval_s: Optional[float] = None,
-    ) -> Dict[str, Any]:
-        """Async polling helper for request completion."""
-        wait_timeout_s = self._timeout_s if timeout_s is None else timeout_s
-        interval = self._poll_interval_s if poll_interval_s is None else poll_interval_s
-        max_interval = (
-            self._poll_max_interval_s if poll_max_interval_s is None else poll_max_interval_s
-        )
-        deadline = time.time() + wait_timeout_s
-        last: Optional[Dict[str, Any]] = None
-
-        while time.time() < deadline:
-            try:
-                last = await self.status.request(request_uid)
-            except NeuroLinkerAPIError as exc:
-                if exc.status_code == 404:
-                    await asyncio.sleep(interval)
-                    interval = min(max_interval, interval * 1.5)
-                    continue
-                raise
-
-            status = last.get("status")
-            if status is None and isinstance(last.get("data"), dict):
-                status = last["data"].get("status")
-
-            if status in ("completed", "failed", "pending"):
-                return last
-
-            await asyncio.sleep(interval)
-            interval = min(max_interval, interval * 1.2)
-
-        job_url = None
-        if isinstance(last, dict):
-            job_url = last.get("job_page_url") or (last.get("data", {}) or {}).get("job_page_url")
-
-        raise TimeoutError(
-            f"Timeout waiting for request {request_uid} after {wait_timeout_s}s. "
-            f"Last status: {last}. Job URL: {job_url}"
         )
 
     async def aclose(self) -> None:

@@ -1,0 +1,198 @@
+import os
+import time
+from pathlib import Path
+
+import pytest
+
+from neurolinker_sdk import NeuroLinker
+
+
+TOKEN = os.getenv("NEUROLINKER_API_KEY")
+
+# Prefer multi-file var. Fall back to single file var.
+PDF_PATHS_RAW = os.getenv("NEUROLINKER_TEST_PDF_PATHS", "").strip()
+PDF_PATH_SINGLE = os.getenv("NEUROLINKER_TEST_PDF_PATH", "").strip()
+
+E2E_TIMEOUT_S = float(os.getenv("NEUROLINKER_E2E_TIMEOUT_S", "600"))
+POLL_INTERVAL_S = float(os.getenv("NEUROLINKER_E2E_POLL_INTERVAL_S", "2"))
+POLL_MAX_INTERVAL_S = float(os.getenv("NEUROLINKER_E2E_POLL_MAX_INTERVAL_S", "10"))
+
+
+def _get_pdf_paths() -> list[Path]:
+    """
+    Load local PDF paths from env. Uses:
+      - NEUROLINKER_TEST_PDF_PATHS="a.pdf,b.pdf" (preferred)
+      - or NEUROLINKER_TEST_PDF_PATH="a.pdf"
+    Paths are resolved relative to the repo root (current working directory).
+    """
+    paths: list[str] = []
+    if PDF_PATHS_RAW:
+        paths = [p.strip() for p in PDF_PATHS_RAW.split(",") if p.strip()]
+    elif PDF_PATH_SINGLE:
+        paths = [PDF_PATH_SINGLE]
+
+    return [Path(p) for p in paths]
+
+
+PDF_PATHS = _get_pdf_paths()
+
+pytestmark = pytest.mark.skipif(
+    not TOKEN or not PDF_PATHS,
+    reason="Set NEUROLINKER_API_KEY and NEUROLINKER_TEST_PDF_PATH(S) to run local E2E tests.",
+)
+
+
+def _read_documents(paths: list[Path]) -> list[tuple[str, bytes]]:
+    """
+    Read PDFs from disk and return [(filename, bytes), ...] for the SDK wrapper.
+    """
+    docs: list[tuple[str, bytes]] = []
+    for p in paths:
+        if not p.exists():
+            raise AssertionError(f"PDF file not found: {p.resolve()}")
+        data = p.read_bytes()
+        docs.append((p.name, data))
+    return docs
+
+
+def _extract_request_uid(extract_response: dict) -> str:
+    """
+    Extract request_uid from extract response with minimal assumptions about shape.
+    """
+    if isinstance(extract_response.get("request_uid"), str):
+        return extract_response["request_uid"]
+
+    data = extract_response.get("data")
+    if isinstance(data, dict) and isinstance(data.get("request_uid"), str):
+        return data["request_uid"]
+
+    raise AssertionError(f"Could not find request_uid in extract response: {extract_response}")
+
+
+def _extract_document_ids_from_request_status(status_response: dict) -> list[str]:
+    """
+    Try to pull document IDs from request-status response.
+    Docs say: 'documents' array of objects containing document status.
+    """
+    documents = status_response.get("documents")
+    if documents is None and isinstance(status_response.get("data"), dict):
+        documents = status_response["data"].get("documents")
+
+    if not isinstance(documents, list):
+        return []
+
+    doc_ids: list[str] = []
+    for d in documents:
+        if not isinstance(d, dict):
+            continue
+        if isinstance(d.get("document_id"), str):
+            doc_ids.append(d["document_id"])
+        elif isinstance(d.get("id"), str):
+            doc_ids.append(d["id"])
+    return doc_ids
+
+
+import time
+from neurolinker_sdk.errors import NeuroLinkerAPIError
+
+
+def _wait_for_request_completion(client: NeuroLinker, request_uid: str) -> dict:
+    """
+    Poll request-status until terminal status or timeout.
+
+    Some deployments may return 404 briefly right after extract (eventual consistency).
+    Treat 404 as transient during polling.
+    """
+    deadline = time.time() + E2E_TIMEOUT_S
+    last = None
+    interval = POLL_INTERVAL_S
+
+    while time.time() < deadline:
+        try:
+            last = client.extraction.status.request(request_uid)
+        except NeuroLinkerAPIError as e:
+            # Transient "not found yet" right after submit: retry
+            if e.status_code == 404:
+                time.sleep(interval)
+                interval = min(POLL_MAX_INTERVAL_S, interval * 1.5)
+                continue
+            raise
+
+        assert isinstance(last, dict)
+
+        status = last.get("status")
+        if status is None and isinstance(last.get("data"), dict):
+            status = last["data"].get("status")
+
+        if status in ("completed", "failed", "pending"):
+            return last
+
+        time.sleep(interval)
+        interval = min(POLL_MAX_INTERVAL_S, interval * 1.2)
+
+    job_url = None
+    if isinstance(last, dict):
+        job_url = last.get("job_page_url") or (last.get("data", {}) or {}).get("job_page_url")
+
+    raise AssertionError(
+        f"Timeout waiting for request {request_uid} after {E2E_TIMEOUT_S}s. "
+        f"Last status: {last}. Job URL: {job_url}"
+    )
+
+
+def _assert_documents_results_schema(payload: dict) -> None:
+    """
+    Validate minimum schema for documents/* endpoints.
+    """
+    assert isinstance(payload, dict)
+    assert "success" in payload
+    assert "results" in payload
+    assert isinstance(payload["results"], list)
+
+
+def test_e2e_local_pdfs_sync():
+    """
+    End-to-end test (sync) using local PDF uploads:
+      - GET /tasks
+      - POST /extract with documents=[...], form must be {} (wrapper handles this)
+      - poll GET /request-status/{request_uid}
+      - GET /document-status/{document_id}
+      - POST /documents/* endpoints using retrieved document_ids
+    """
+    documents = _read_documents(PDF_PATHS)
+
+    with NeuroLinker.from_env() as client:
+        # 1) Tasks
+        tasks = client.extraction.list_tasks()
+        assert isinstance(tasks, dict)
+        assert "success" in tasks
+
+        # 2) Extract using uploaded files (documents mode)
+        extract_resp = client.extraction.extract(documents=documents, urls=None, alias=None)
+        request_uid = _extract_request_uid(extract_resp)
+
+        # 3) Poll request-status
+        status_resp = _wait_for_request_completion(client, request_uid)
+        doc_ids = _extract_document_ids_from_request_status(status_resp)
+        assert doc_ids, f"No document ids found in request-status: {status_resp}"
+
+        # 4) Document status for first doc
+        doc_status = client.extraction.status.document(doc_ids[0])
+        assert isinstance(doc_status, dict)
+        assert "success" in doc_status
+
+        # 5) Results endpoints
+        res_json = client.extraction.documents.json(doc_ids)
+        _assert_documents_results_schema(res_json)
+
+        res_md = client.extraction.documents.markdown(doc_ids)
+        _assert_documents_results_schema(res_md)
+
+        res_sum = client.extraction.documents.document_summary(doc_ids, summary_type="page")
+        _assert_documents_results_schema(res_sum)
+
+        res_pages = client.extraction.documents.page_summaries(doc_ids)
+        _assert_documents_results_schema(res_pages)
+
+        res_images = client.extraction.documents.images(doc_ids)
+        _assert_documents_results_schema(res_images)

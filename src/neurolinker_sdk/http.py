@@ -63,14 +63,17 @@ def _encode_form_payload(
     urls: Optional[list[str]],
     alias: Optional[str],
     description: Optional[str] = None,
+    json_schema: Optional[Dict[str, Any]] = None,
 ) -> str:
-    """
-    Build the JSON payload sent in the `form` field for URL-based extraction.
+    """Build the JSON payload sent in the ``form`` field for multipart submissions.
 
-    The backend expects:
-      - `documents_url`: list of URLs to download documents from
-      - `alias`: optional alias for the request
-      - `description`: optional description for the request
+    Used by both full extraction (``/v1/extract``) and field extraction
+    (``/v1/extract-fields``):
+
+    - ``documents_url``: list of URLs to download documents from (URL mode)
+    - ``alias``: optional alias for the request
+    - ``description``: optional description for the request
+    - ``json_schema``: REQUIRED for ``/v1/extract-fields``, omitted for ``/v1/extract``
     """
     payload: Dict[str, Any] = {}
 
@@ -80,5 +83,7 @@ def _encode_form_payload(
         payload["alias"] = alias
     if description:
         payload["description"] = description
+    if json_schema is not None:
+        payload["json_schema"] = json_schema
 
     return json.dumps(payload)
