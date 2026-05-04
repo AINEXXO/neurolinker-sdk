@@ -12,13 +12,16 @@ class ModelRef(BaseModel):
     Provider is auto-detected server-side from the endpoint domain (internal,
     ``jina.ai``, ``voyageai.com``, ...). Provider-specific fields (e.g. Voyage's
     ``input_type``) are passed through as-is via ``extra="allow"``.
+
+    For external providers, pass ``secret_id`` to reference the provider's
+    credential by Secret Manager id; the actual value is resolved server-side
+    at job execution time. Internal models need no credential.
     """
 
     model_config = ConfigDict(extra="allow")
 
     endpoint: str
     model_name: str
-    api_key: Optional[str] = None
     secret_id: Optional[str] = None
 
     @field_validator("endpoint")

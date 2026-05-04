@@ -32,7 +32,7 @@ def _collection() -> CollectionSchema:
 
 
 def _vdb_config() -> VectorDBConfig:
-    return VectorDBConfig(uri="https://example.zilliz.com", api_key="test-key")
+    return VectorDBConfig(uri="https://example.zilliz.com", secret_id="test-secret")
 
 
 def _field_mappings() -> list[FieldMapping]:
@@ -97,7 +97,7 @@ def test_collections_create_with_dict_payload() -> None:
                     "name": "c",
                     "fields": [{"name": "a", "dtype": "text"}],
                 },
-                vector_db_config={"uri": "https://example", "api_key": "k"},
+                vector_db_config={"uri": "https://example", "secret_id": "s"},
                 database="tenant_a",
             )
 

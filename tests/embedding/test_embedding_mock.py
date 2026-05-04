@@ -224,8 +224,6 @@ async def test_create_job_with_multi_modal_async() -> None:
     assert body_modalities["text"]["vectors"]["sparse"]["vector_name"] == "text_sparse_splade"
     assert body_modalities["image"]["vectors"]["dense"]["model"]["secret_id"] == \
         "neurolinker__user_42__voyage_key"
-    # api_key is None → dropped
-    assert "api_key" not in body_modalities["image"]["vectors"]["dense"]["model"]
 
 
 # ---------------------------------------------------------------------------

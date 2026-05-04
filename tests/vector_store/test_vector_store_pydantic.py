@@ -137,7 +137,6 @@ def test_vector_db_config_secret_id_preserved() -> None:
         secret_id="neurolinker__user_42__milvus_token",
     )
     assert cfg.secret_id == "neurolinker__user_42__milvus_token"
-    assert cfg.api_key is None
 
 
 def test_vector_db_config_default_timeout() -> None:
@@ -187,8 +186,16 @@ def test_field_mapping_forbids_extra_fields() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_vector_db_config_dump_excludes_none_api_key() -> None:
+def test_vector_db_config_dump_excludes_none_secret_id() -> None:
+    # When secret_id is not provided, it must not appear in the dumped payload
+    # (the SDK only sends fields it was explicitly given).
+    cfg = VectorDBConfig(uri="https://example")
+    dumped = cfg.model_dump(exclude_none=True)
+    assert "secret_id" not in dumped
+    assert dumped["uri"] == "https://example"
+
+
+def test_vector_db_config_dump_includes_secret_id_when_provided() -> None:
     cfg = VectorDBConfig(uri="https://example", secret_id="s")
     dumped = cfg.model_dump(exclude_none=True)
-    assert "api_key" not in dumped
     assert dumped["secret_id"] == "s"

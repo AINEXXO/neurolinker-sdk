@@ -10,14 +10,27 @@ from neurolinker_sdk.embedding import (
     TextModality,
     VectorConfig,
 )
+from neurolinker_sdk.polling import (
+    wait_for_terminal_status,
+    wait_for_terminal_status_async,
+)
 
 TOKEN = os.getenv("NEUROLINKER_API_KEY")
 BUCKET_UID = os.getenv("NEUROLINKER_TEST_BUCKET_UID")
+
+# Strict: a "pending" must not satisfy the wait — we want to actually verify
+# byte-level outputs of a completed job.
+_STRICT_TERMINAL = frozenset({"completed", "failed"})
 
 pytestmark = pytest.mark.skipif(
     not TOKEN or not BUCKET_UID,
     reason="Set NEUROLINKER_API_KEY and NEUROLINKER_TEST_BUCKET_UID to run this E2E test.",
 )
+
+
+def _extract_status(payload: dict) -> str | None:
+    s = payload.get("status")
+    return s if isinstance(s, str) else None
 
 
 def _pick_text_model(models_payload: dict) -> dict:
@@ -49,18 +62,12 @@ def _build_modalities(model: dict) -> EmbeddingModalities:
     )
 
 
-def _assert_terminal_status(payload: dict) -> None:
-    assert isinstance(payload, dict)
-    assert payload.get("status") in {"completed", "failed", "pending"}, (
-        f"Unexpected status in embedding job payload: {payload}"
-    )
-
-
 def test_e2e_embedding_full_flow_sync() -> None:
     with NeuroLinker.from_env() as client:
         # 1) list models
         models = client.embedding.list_models()
         model = _pick_text_model(models)
+        print(f"[embedding e2e] picked model: {model.get('name')} @ {model.get('endpoint')}")
 
         # 2) submit job
         submit = client.embedding.jobs.create(
@@ -71,19 +78,32 @@ def test_e2e_embedding_full_flow_sync() -> None:
         assert isinstance(job_uid, str) and job_uid, (
             f"Missing job_uid in submit response: {submit}"
         )
+        print(f"[embedding e2e] submitted job {job_uid}")
 
-        # 3) wait
-        final = client.embedding.jobs.wait(job_uid)
-        _assert_terminal_status(final)
+        # 3) strict wait
+        final = wait_for_terminal_status(
+            fetch_status=lambda: client.embedding.jobs.get(job_uid),
+            extract_status=_extract_status,
+            timeout_s=1100.0,
+            poll_interval_s=2.0,
+            poll_max_interval_s=10.0,
+            terminal_states=_STRICT_TERMINAL,
+            identifier=f"embedding job {job_uid}",
+        )
+        print(f"[embedding e2e] final status: {final.get('status')}")
+        assert final.get("status") == "completed", f"Job not completed: {final}"
 
-        # 4) results
+        # 4) results — real bytes verification
         files = client.embedding.results(BUCKET_UID)
         assert isinstance(files, dict)
-        if final.get("status") == "completed":
-            assert files, f"Expected non-empty files dict on completed job, got: {files}"
-            for name, content in files.items():
-                assert isinstance(name, str) and name
-                assert isinstance(content, (bytes, bytearray)) and len(content) > 0
+        assert files, f"Expected non-empty files dict on completed job, got: {files}"
+        for name, content in files.items():
+            assert isinstance(name, str) and name
+            assert isinstance(content, (bytes, bytearray)) and len(content) > 0
+        print(
+            f"[embedding e2e] downloaded {len(files)} files: "
+            + ", ".join(f"{n} ({len(c)}B)" for n, c in files.items())
+        )
 
 
 @pytest.mark.asyncio
@@ -91,6 +111,7 @@ async def test_e2e_embedding_full_flow_async() -> None:
     async with AsyncNeuroLinker.from_env() as client:
         models = await client.embedding.list_models()
         model = _pick_text_model(models)
+        print(f"[embedding e2e async] picked model: {model.get('name')} @ {model.get('endpoint')}")
 
         submit = await client.embedding.jobs.create(
             bucket_uid=BUCKET_UID,
@@ -98,14 +119,30 @@ async def test_e2e_embedding_full_flow_async() -> None:
         )
         job_uid = submit.get("job_uid")
         assert isinstance(job_uid, str) and job_uid
+        print(f"[embedding e2e async] submitted job {job_uid}")
 
-        final = await client.embedding.jobs.wait(job_uid)
-        _assert_terminal_status(final)
+        async def _fetch() -> dict:
+            return await client.embedding.jobs.get(job_uid)
+
+        final = await wait_for_terminal_status_async(
+            fetch_status=_fetch,
+            extract_status=_extract_status,
+            timeout_s=1100.0,
+            poll_interval_s=2.0,
+            poll_max_interval_s=10.0,
+            terminal_states=_STRICT_TERMINAL,
+            identifier=f"embedding job {job_uid}",
+        )
+        print(f"[embedding e2e async] final status: {final.get('status')}")
+        assert final.get("status") == "completed", f"Job not completed: {final}"
 
         files = await client.embedding.results(BUCKET_UID)
         assert isinstance(files, dict)
-        if final.get("status") == "completed":
-            assert files
-            for name, content in files.items():
-                assert isinstance(name, str) and name
-                assert isinstance(content, (bytes, bytearray)) and len(content) > 0
+        assert files
+        for name, content in files.items():
+            assert isinstance(name, str) and name
+            assert isinstance(content, (bytes, bytearray)) and len(content) > 0
+        print(
+            f"[embedding e2e async] downloaded {len(files)} files: "
+            + ", ".join(f"{n} ({len(c)}B)" for n, c in files.items())
+        )

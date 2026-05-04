@@ -168,11 +168,12 @@ def test_modalities_accepts_all_three_modalities() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_vector_config_dump_excludes_none_api_key() -> None:
+def test_vector_config_dump_excludes_none_secret_id() -> None:
+    # When secret_id is not provided on ModelRef, it must not appear in the
+    # dumped payload (the SDK only sends fields it was explicitly given).
     cfg = VectorConfig(
         vector_name="text_dense",
         model=ModelRef(endpoint="http://svc", model_name="m"),
     )
     dumped = cfg.model_dump(exclude_none=True)
-    assert "api_key" not in dumped["model"]
     assert "secret_id" not in dumped["model"]

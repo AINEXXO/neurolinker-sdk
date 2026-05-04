@@ -7,6 +7,10 @@ from typing import Iterator
 import pytest
 
 from neurolinker_sdk import AsyncNeuroLinker, NeuroLinker
+from neurolinker_sdk.polling import (
+    wait_for_terminal_status,
+    wait_for_terminal_status_async,
+)
 from neurolinker_sdk.vector_store import (
     CollectionSchema,
     FieldDef,
@@ -20,6 +24,10 @@ VECTOR_DB_URI = os.getenv("NEUROLINKER_TEST_VECTOR_DB_URI")
 VECTOR_DB_API_KEY = os.getenv("NEUROLINKER_TEST_VECTOR_DB_API_KEY")
 VECTOR_DIM = int(os.getenv("NEUROLINKER_TEST_VECTOR_DIM", "1024"))
 
+# Strict: a "pending" must not satisfy the wait — we want to actually verify
+# the load job ran on the user's vector DB.
+_STRICT_TERMINAL = frozenset({"completed", "failed"})
+
 pytestmark = pytest.mark.skipif(
     not (TOKEN and BUCKET_UID and VECTOR_DB_URI and VECTOR_DB_API_KEY),
     reason=(
@@ -28,6 +36,11 @@ pytestmark = pytest.mark.skipif(
         "to run this E2E test."
     ),
 )
+
+
+def _extract_status(payload: dict) -> str | None:
+    s = payload.get("status")
+    return s if isinstance(s, str) else None
 
 
 @pytest.fixture(scope="session")
@@ -47,11 +60,13 @@ def vdb_secret_id() -> Iterator[str]:
         assert isinstance(secret_id, str) and secret_id, (
             f"secrets.create did not return a usable secret_id: {resp}"
         )
+        print(f"[vector_store e2e] managed secret created: {secret_id}")
         try:
             yield secret_id
         finally:
             try:
                 client.management.secrets.delete(secret_id)
+                print(f"[vector_store e2e] managed secret deleted: {secret_id}")
             except Exception as exc:  # noqa: BLE001 — best-effort cleanup
                 print(f"\n[cleanup] Warning: delete secret {secret_id}: {exc}")
 
@@ -78,10 +93,7 @@ def _build_collection(name: str) -> CollectionSchema:
 
 
 def _vdb_config(secret_id: str) -> VectorDBConfig:
-    """Build a ``VectorDBConfig`` referencing a managed secret by id.
-
-    The ``api_key`` field is intentionally omitted — production parity.
-    """
+    """Build a ``VectorDBConfig`` referencing a managed secret by id."""
     return VectorDBConfig(uri=VECTOR_DB_URI, secret_id=secret_id)
 
 
@@ -95,13 +107,6 @@ def _field_mappings() -> list[FieldMapping]:
     ]
 
 
-def _assert_terminal_status(payload: dict) -> None:
-    assert isinstance(payload, dict)
-    assert payload.get("status") in {"completed", "failed", "pending"}, (
-        f"Unexpected status in vector-load job payload: {payload}"
-    )
-
-
 def test_e2e_vector_store_full_flow_sync(vdb_secret_id: str) -> None:
     name = _collection_name()
     with NeuroLinker.from_env() as client:
@@ -112,6 +117,10 @@ def test_e2e_vector_store_full_flow_sync(vdb_secret_id: str) -> None:
         )
         assert isinstance(create_resp, dict)
         assert create_resp.get("success") is True
+        print(
+            f"[vector_store e2e] collection {name} created "
+            f"(already_existed={create_resp.get('already_existed')})"
+        )
 
         # 2) submit load job
         submit = client.vector_store.jobs.create(
@@ -124,10 +133,23 @@ def test_e2e_vector_store_full_flow_sync(vdb_secret_id: str) -> None:
         assert isinstance(job_uid, str) and job_uid, (
             f"Missing job_uid in submit response: {submit}"
         )
+        print(f"[vector_store e2e] submitted load job {job_uid}")
 
-        # 3) wait
-        final = client.vector_store.jobs.wait(job_uid)
-        _assert_terminal_status(final)
+        # 3) strict wait
+        final = wait_for_terminal_status(
+            fetch_status=lambda: client.vector_store.jobs.get(job_uid),
+            extract_status=_extract_status,
+            timeout_s=1100.0,
+            poll_interval_s=2.0,
+            poll_max_interval_s=10.0,
+            terminal_states=_STRICT_TERMINAL,
+            identifier=f"vector-load job {job_uid}",
+        )
+        print(
+            f"[vector_store e2e] final status: {final.get('status')}; "
+            f"collection_name: {final.get('collection_name')}"
+        )
+        assert final.get("status") == "completed", f"Job not completed: {final}"
         assert final.get("collection_name") == name
 
 
@@ -141,6 +163,10 @@ async def test_e2e_vector_store_full_flow_async(vdb_secret_id: str) -> None:
         )
         assert isinstance(create_resp, dict)
         assert create_resp.get("success") is True
+        print(
+            f"[vector_store e2e async] collection {name} created "
+            f"(already_existed={create_resp.get('already_existed')})"
+        )
 
         submit = await client.vector_store.jobs.create(
             bucket_uid=BUCKET_UID,
@@ -150,7 +176,23 @@ async def test_e2e_vector_store_full_flow_async(vdb_secret_id: str) -> None:
         )
         job_uid = submit.get("job_uid")
         assert isinstance(job_uid, str) and job_uid
+        print(f"[vector_store e2e async] submitted load job {job_uid}")
 
-        final = await client.vector_store.jobs.wait(job_uid)
-        _assert_terminal_status(final)
+        async def _fetch() -> dict:
+            return await client.vector_store.jobs.get(job_uid)
+
+        final = await wait_for_terminal_status_async(
+            fetch_status=_fetch,
+            extract_status=_extract_status,
+            timeout_s=1100.0,
+            poll_interval_s=2.0,
+            poll_max_interval_s=10.0,
+            terminal_states=_STRICT_TERMINAL,
+            identifier=f"vector-load job {job_uid}",
+        )
+        print(
+            f"[vector_store e2e async] final status: {final.get('status')}; "
+            f"collection_name: {final.get('collection_name')}"
+        )
+        assert final.get("status") == "completed", f"Job not completed: {final}"
         assert final.get("collection_name") == name

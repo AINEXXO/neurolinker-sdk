@@ -83,16 +83,13 @@ class CollectionSchema(BaseModel):
 class VectorDBConfig(BaseModel):
     """Vector database connection configuration.
 
-    Provider is auto-detected server-side from the URI domain
-    (``*.zilliz.com`` → Milvus, ``*.qdrant.io`` → Qdrant,
-    ``*.pinecone.io`` → Pinecone). Pass ``secret_id`` instead of ``api_key``
-    for production: the key is resolved server-side at job execution time.
+    Pass ``secret_id`` to reference the credential by Secret Manager id;
+    the actual value is resolved server-side at job execution time.
     """
 
     model_config = ConfigDict(extra="forbid")
 
     uri: str
-    api_key: Optional[str] = None
     secret_id: Optional[str] = None
     timeout: int = 300
 
