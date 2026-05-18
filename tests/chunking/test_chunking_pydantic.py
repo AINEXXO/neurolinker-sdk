@@ -99,6 +99,13 @@ def test_section_greedy_rejects_negative_t_max() -> None:
         SectionGreedyConfig(t_max=-5)
 
 
+def test_section_greedy_rejects_t_min_not_less_than_t_max() -> None:
+    with pytest.raises(ValidationError):
+        SectionGreedyConfig(t_min=100, t_max=100)
+    with pytest.raises(ValidationError):
+        SectionGreedyConfig(t_min=200, t_max=100)
+
+
 def test_md_header_level_rejects_out_of_range_level() -> None:
     with pytest.raises(ValidationError):
         MdHeaderLevelConfig(chunk_at_level=0)

@@ -3,177 +3,120 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from neurolinker_sdk.embedding import (
-    EmbeddingModalities,
-    ImageModality,
-    ModalityVectors,
-    ModelRef,
-    TableModality,
-    TextModality,
-    VectorConfig,
-)
+from neurolinker_sdk.embedding import Content, EmbeddingVector
 
 
-def _vc(name: str = "text_dense_bge", endpoint: str = "http://svc/compute") -> VectorConfig:
-    return VectorConfig(
-        vector_name=name,
-        model=ModelRef(endpoint=endpoint, model_name="bge-m3"),
-        inputs=["content"],
-    )
-
-
-# ---------------------------------------------------------------------------
-# ModelRef
-# ---------------------------------------------------------------------------
-
-
-def test_model_ref_requires_http_or_https_scheme() -> None:
+def test_embedding_vector_rejects_reserved_item_prefix() -> None:
     with pytest.raises(ValidationError):
-        ModelRef(endpoint="svc/compute", model_name="bge-m3")
-    with pytest.raises(ValidationError):
-        ModelRef(endpoint="ftp://svc", model_name="bge-m3")
-
-
-def test_model_ref_accepts_http_and_https() -> None:
-    ModelRef(endpoint="http://svc/compute", model_name="bge-m3")
-    ModelRef(endpoint="https://api.voyageai.com/v1/embed", model_name="voyage-multimodal-3")
-
-
-def test_model_ref_accepts_extra_provider_fields() -> None:
-    # extra='allow' for provider-specific fields like Voyage's 'input_type'
-    ref = ModelRef.model_validate({
-        "endpoint": "https://api.voyageai.com/v1/embed",
-        "model_name": "voyage-3",
-        "input_type": "document",
-    })
-    dumped = ref.model_dump(exclude_none=True)
-    assert dumped["input_type"] == "document"
-
-
-def test_model_ref_secret_id_preserved() -> None:
-    ref = ModelRef(
-        endpoint="https://api.voyageai.com/v1/embed",
-        model_name="voyage-3",
-        secret_id="neurolinker__user_42__voyage_key",
-    )
-    assert ref.secret_id == "neurolinker__user_42__voyage_key"
-
-
-# ---------------------------------------------------------------------------
-# VectorConfig
-# ---------------------------------------------------------------------------
-
-
-def test_vector_config_rejects_reserved_item_prefix() -> None:
-    with pytest.raises(ValidationError):
-        VectorConfig(
-            vector_name="item_dense",
-            model=ModelRef(endpoint="http://svc", model_name="m"),
+        EmbeddingVector(
+            vector_type="dense",
+            field_name="item_dense",
+            model_name="ainexxo-bge-m3",
         )
 
 
-def test_vector_config_rejects_reserved_chunk_prefix() -> None:
+def test_embedding_vector_rejects_reserved_chunk_prefix() -> None:
     with pytest.raises(ValidationError):
-        VectorConfig(
-            vector_name="chunk_anything",
-            model=ModelRef(endpoint="http://svc", model_name="m"),
+        EmbeddingVector(
+            vector_type="dense",
+            field_name="chunk_anything",
+            model_name="ainexxo-bge-m3",
         )
 
 
-def test_vector_config_allows_non_reserved_name() -> None:
-    cfg = VectorConfig(
-        vector_name="text_dense_bge",
-        model=ModelRef(endpoint="http://svc", model_name="m"),
+def test_embedding_vector_accepts_internal_model_name() -> None:
+    dense = EmbeddingVector(
+        vector_type="dense",
+        field_name="text_dense",
+        model_name="ainexxo-bge-m3",
+    )
+    assert dense.field_name == "text_dense"
+
+
+def test_embedding_vector_rejects_extra_fields() -> None:
+    with pytest.raises(ValidationError):
+        EmbeddingVector.model_validate(
+            {
+                "vector_type": "dense",
+                "field_name": "text_dense",
+                "model_name": "voyage/voyage-3.5",
+                "api_key": "pa-test",
+                "input_type": "document",
+            }
+        )
+
+
+def test_content_rejects_unsupported_tables_alias() -> None:
+    with pytest.raises(ValidationError):
+        Content(
+            content_type="tables",
+            inputs=["data", "description"],
+            vectors=[
+                EmbeddingVector(
+                    vector_type="dense",
+                    field_name="table_dense",
+                    model_name="ainexxo-bge-m3",
+                ),
+            ],
+        )
+
+
+def test_content_rejects_invalid_inputs_for_content_type() -> None:
+    with pytest.raises(ValidationError):
+        Content(
+            content_type="text",
+            inputs=["image_base64"],
+            vectors=[
+                EmbeddingVector(
+                    vector_type="dense",
+                    field_name="text_dense",
+                    model_name="ainexxo-bge-m3",
+                ),
+            ],
+        )
+
+
+def test_content_builds_with_single_vector() -> None:
+    content = Content(
+        content_type="text",
         inputs=["content"],
+        vectors=[
+            EmbeddingVector(
+                vector_type="dense",
+                field_name="text_dense",
+                model_name="ainexxo-bge-m3",
+            ),
+        ],
     )
-    assert cfg.vector_name == "text_dense_bge"
+    assert content.content_type == "text"
 
 
-def test_vector_config_forbids_unknown_field() -> None:
+def test_content_rejects_empty_vectors_list() -> None:
     with pytest.raises(ValidationError):
-        VectorConfig.model_validate({
-            "vector_name": "text_dense_bge",
-            "model": {"endpoint": "http://svc", "model_name": "m"},
-            "bogus_field": True,
-        })
+        Content(
+            content_type="text",
+            inputs=["content"],
+            vectors=[],
+        )
 
 
-# ---------------------------------------------------------------------------
-# ModalityVectors — multi-vector support
-# ---------------------------------------------------------------------------
-
-
-def test_modality_vectors_accepts_single_dense() -> None:
-    mv = ModalityVectors(dense=_vc())
-    assert isinstance(mv.dense, VectorConfig)
-
-
-def test_modality_vectors_accepts_list_of_dense() -> None:
-    mv = ModalityVectors(dense=[_vc("text_dense_a"), _vc("text_dense_b")])
-    assert isinstance(mv.dense, list)
-    assert len(mv.dense) == 2
-
-
-def test_modality_vectors_accepts_both_dense_and_sparse() -> None:
-    mv = ModalityVectors(dense=_vc("text_dense"), sparse=_vc("text_sparse"))
-    assert mv.dense is not None and mv.sparse is not None
-
-
-def test_modality_vectors_allows_none() -> None:
-    mv = ModalityVectors()
-    assert mv.dense is None and mv.sparse is None
-
-
-# ---------------------------------------------------------------------------
-# EmbeddingModalities
-# ---------------------------------------------------------------------------
-
-
-def test_modalities_accepts_only_text() -> None:
-    m = EmbeddingModalities(text=TextModality(vectors=ModalityVectors(dense=_vc())))
-    dumped = m.model_dump(exclude_none=True)
-    assert set(dumped.keys()) == {"text"}
-
-
-def test_modalities_rejects_unknown_modality_key() -> None:
-    with pytest.raises(ValidationError):
-        EmbeddingModalities.model_validate({
-            "audio": {"vectors": {"dense": None}},
-        })
-
-
-def test_modalities_to_payload_drops_none() -> None:
-    m = EmbeddingModalities(
-        text=TextModality(vectors=ModalityVectors(dense=_vc("text_dense"))),
+def test_content_builds_with_multiple_vectors() -> None:
+    content = Content(
+        content_type="image",
+        inputs=["image_base64", "description"],
+        vectors=[
+            EmbeddingVector(
+                vector_type="dense",
+                field_name="image_dense",
+                model_name="jina_ai/jina-embeddings-v4",
+                api_key="jina",
+            ),
+            EmbeddingVector(
+                vector_type="dense",
+                field_name="image_dense_2",
+                model_name="jina_ai/jina-embeddings-v4",
+                api_key="jina",
+            ),
+        ],
     )
-    payload = m.to_payload()
-    # sparse not set → absent
-    assert "sparse" not in payload["text"]["vectors"]
-    # image/table not set → absent
-    assert "image" not in payload and "table" not in payload
-
-
-def test_modalities_accepts_all_three_modalities() -> None:
-    m = EmbeddingModalities(
-        text=TextModality(vectors=ModalityVectors(dense=_vc("text_dense"))),
-        image=ImageModality(vectors=ModalityVectors(dense=_vc("image_dense"))),
-        table=TableModality(vectors=ModalityVectors(dense=_vc("table_dense"))),
-    )
-    payload = m.to_payload()
-    assert set(payload.keys()) == {"text", "image", "table"}
-
-
-# ---------------------------------------------------------------------------
-# model_dump — exclude_none / extra='allow' on ModelRef
-# ---------------------------------------------------------------------------
-
-
-def test_vector_config_dump_excludes_none_secret_id() -> None:
-    # When secret_id is not provided on ModelRef, it must not appear in the
-    # dumped payload (the SDK only sends fields it was explicitly given).
-    cfg = VectorConfig(
-        vector_name="text_dense",
-        model=ModelRef(endpoint="http://svc", model_name="m"),
-    )
-    dumped = cfg.model_dump(exclude_none=True)
-    assert "secret_id" not in dumped["model"]
+    assert len(content.vectors) == 2

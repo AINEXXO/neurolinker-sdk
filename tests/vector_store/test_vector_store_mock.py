@@ -32,7 +32,7 @@ def _collection() -> CollectionSchema:
 
 
 def _vdb_config() -> VectorDBConfig:
-    return VectorDBConfig(uri="https://example.zilliz.com", secret_id="test-secret")
+    return VectorDBConfig(uri="https://example.zilliz.com", api_key="test-api-key")
 
 
 def _field_mappings() -> list[FieldMapping]:
@@ -97,7 +97,7 @@ def test_collections_create_with_dict_payload() -> None:
                     "name": "c",
                     "fields": [{"name": "a", "dtype": "text"}],
                 },
-                vector_db_config={"uri": "https://example", "secret_id": "s"},
+                vector_db_config={"uri": "https://example", "api_key": "k"},
                 database="tenant_a",
             )
 
@@ -253,16 +253,16 @@ def test_jobs_get_sync() -> None:
             200,
             json={"job_uid": JOB_UID, "status": "completed", "bucket_uid": BUCKET_UID,
                   "collection_name": "c", "total_records": 42,
-                  "created_at": "2024-01-01T00:00:00Z"},
+                  "started_at": "2024-01-01T00:00:00Z"},
             request=request,
         )
 
     with httpx.Client(transport=httpx.MockTransport(handler)) as http_client:
         with NeuroLinker(token="nl_dummy", http_client=http_client, timeout_s=1.0) as client:
-            resp = client.vector_store.jobs.get(JOB_UID)
+            resp = client.vector_store.jobs.get(BUCKET_UID, JOB_UID)
 
     assert captured["method"] == "GET"
-    assert captured["url"].endswith(f"/v1/vector-store/jobs/{JOB_UID}")
+    assert captured["url"].endswith(f"/v1/vector-store/jobs/{BUCKET_UID}/{JOB_UID}")
     assert resp["status"] == "completed"
     assert resp["total_records"] == 42
 
@@ -270,7 +270,7 @@ def test_jobs_get_sync() -> None:
 def test_jobs_get_rejects_empty_job_uid() -> None:
     with NeuroLinker(token="nl_dummy", timeout_s=1.0) as client:
         with pytest.raises(NeuroLinkerConfigError):
-            client.vector_store.jobs.get("")
+            client.vector_store.jobs.get(BUCKET_UID, "")
 
 
 # ---------------------------------------------------------------------------
@@ -296,7 +296,7 @@ def test_jobs_wait_sync_polls_until_terminal() -> None:
             poll_interval_s=0.0,
             poll_max_interval_s=0.0,
         ) as client:
-            final = client.vector_store.jobs.wait(JOB_UID)
+            final = client.vector_store.jobs.wait(BUCKET_UID, JOB_UID)
 
     assert final["status"] == "completed"
 
@@ -318,7 +318,7 @@ def test_jobs_wait_sync_tolerates_404_transient() -> None:
             poll_interval_s=0.0,
             poll_max_interval_s=0.0,
         ) as client:
-            final = client.vector_store.jobs.wait(JOB_UID)
+            final = client.vector_store.jobs.wait(BUCKET_UID, JOB_UID)
 
     assert final["status"] == "completed"
     assert calls["n"] == 2
@@ -342,7 +342,7 @@ async def test_jobs_wait_async_polls() -> None:
             poll_interval_s=0.0,
             poll_max_interval_s=0.0,
         ) as client:
-            final = await client.vector_store.jobs.wait(JOB_UID)
+            final = await client.vector_store.jobs.wait(BUCKET_UID, JOB_UID)
 
     assert final["status"] == "completed"
 

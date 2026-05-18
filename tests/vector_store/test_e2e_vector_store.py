@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import os
-import uuid
-from typing import Iterator
 
 import pytest
 
@@ -43,34 +41,6 @@ def _extract_status(payload: dict) -> str | None:
     return s if isinstance(s, str) else None
 
 
-@pytest.fixture(scope="session")
-def vdb_secret_id() -> Iterator[str]:
-    """Create a managed secret with the test vector-DB API key, yield its id, delete at teardown.
-
-    Mirrors how a production user onboards a vector-DB credential:
-    ``secrets.create`` once, reuse the returned ``secret_id`` in every job.
-    The actual API key never travels in any job payload after this point.
-    """
-    secret_name = f"sdk_e2e_vdb_{uuid.uuid4().hex[:8]}"
-    with NeuroLinker.from_env() as client:
-        resp = client.management.secrets.create(
-            name=secret_name, value=VECTOR_DB_API_KEY
-        )
-        secret_id = resp.get("secret_id")
-        assert isinstance(secret_id, str) and secret_id, (
-            f"secrets.create did not return a usable secret_id: {resp}"
-        )
-        print(f"[vector_store e2e] managed secret created: {secret_id}")
-        try:
-            yield secret_id
-        finally:
-            try:
-                client.management.secrets.delete(secret_id)
-                print(f"[vector_store e2e] managed secret deleted: {secret_id}")
-            except Exception as exc:  # noqa: BLE001 — best-effort cleanup
-                print(f"\n[cleanup] Warning: delete secret {secret_id}: {exc}")
-
-
 def _collection_name() -> str:
     """Use a fixed collection name so the test is idempotent and does not
     accumulate collections on Zilliz (free tier has a 5-collection limit).
@@ -92,9 +62,8 @@ def _build_collection(name: str) -> CollectionSchema:
     )
 
 
-def _vdb_config(secret_id: str) -> VectorDBConfig:
-    """Build a ``VectorDBConfig`` referencing a managed secret by id."""
-    return VectorDBConfig(uri=VECTOR_DB_URI, secret_id=secret_id)
+def _vdb_config() -> VectorDBConfig:
+    return VectorDBConfig(uri=VECTOR_DB_URI, api_key=VECTOR_DB_API_KEY)
 
 
 def _field_mappings() -> list[FieldMapping]:
@@ -107,13 +76,13 @@ def _field_mappings() -> list[FieldMapping]:
     ]
 
 
-def test_e2e_vector_store_full_flow_sync(vdb_secret_id: str) -> None:
+def test_e2e_vector_store_full_flow_sync() -> None:
     name = _collection_name()
     with NeuroLinker.from_env() as client:
         # 1) create collection (idempotent)
         create_resp = client.vector_store.collections.create(
             collection=_build_collection(name),
-            vector_db_config=_vdb_config(vdb_secret_id),
+            vector_db_config=_vdb_config(),
         )
         assert isinstance(create_resp, dict)
         assert create_resp.get("success") is True
@@ -127,7 +96,7 @@ def test_e2e_vector_store_full_flow_sync(vdb_secret_id: str) -> None:
             bucket_uid=BUCKET_UID,
             collection_name=name,
             field_mappings=_field_mappings(),
-            vector_db_config=_vdb_config(vdb_secret_id),
+            vector_db_config=_vdb_config(),
         )
         job_uid = submit.get("job_uid")
         assert isinstance(job_uid, str) and job_uid, (
@@ -137,7 +106,7 @@ def test_e2e_vector_store_full_flow_sync(vdb_secret_id: str) -> None:
 
         # 3) strict wait
         final = wait_for_terminal_status(
-            fetch_status=lambda: client.vector_store.jobs.get(job_uid),
+            fetch_status=lambda: client.vector_store.jobs.get(BUCKET_UID, job_uid),
             extract_status=_extract_status,
             timeout_s=1100.0,
             poll_interval_s=2.0,
@@ -154,12 +123,12 @@ def test_e2e_vector_store_full_flow_sync(vdb_secret_id: str) -> None:
 
 
 @pytest.mark.asyncio
-async def test_e2e_vector_store_full_flow_async(vdb_secret_id: str) -> None:
+async def test_e2e_vector_store_full_flow_async() -> None:
     name = _collection_name()
     async with AsyncNeuroLinker.from_env() as client:
         create_resp = await client.vector_store.collections.create(
             collection=_build_collection(name),
-            vector_db_config=_vdb_config(vdb_secret_id),
+            vector_db_config=_vdb_config(),
         )
         assert isinstance(create_resp, dict)
         assert create_resp.get("success") is True
@@ -172,14 +141,14 @@ async def test_e2e_vector_store_full_flow_async(vdb_secret_id: str) -> None:
             bucket_uid=BUCKET_UID,
             collection_name=name,
             field_mappings=_field_mappings(),
-            vector_db_config=_vdb_config(vdb_secret_id),
+            vector_db_config=_vdb_config(),
         )
         job_uid = submit.get("job_uid")
         assert isinstance(job_uid, str) and job_uid
         print(f"[vector_store e2e async] submitted load job {job_uid}")
 
         async def _fetch() -> dict:
-            return await client.vector_store.jobs.get(job_uid)
+            return await client.vector_store.jobs.get(BUCKET_UID, job_uid)
 
         final = await wait_for_terminal_status_async(
             fetch_status=_fetch,

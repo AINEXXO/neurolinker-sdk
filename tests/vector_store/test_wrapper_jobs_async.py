@@ -50,7 +50,7 @@ async def test_wrapper_jobs_get_async_uses_default_base_url() -> None:
         return httpx.Response(
             200,
             json={"job_uid": JOB_UID, "status": "completed", "bucket_uid": BUCKET_UID,
-                  "collection_name": "c", "created_at": "2024-01-01T00:00:00Z"},
+                  "collection_name": "c", "started_at": "2024-01-01T00:00:00Z"},
             request=request,
         )
 
@@ -58,9 +58,9 @@ async def test_wrapper_jobs_get_async_uses_default_base_url() -> None:
         async with AsyncNeuroLinker(
             token="nl_dummy", http_client=http_client, timeout_s=1.0
         ) as client:
-            await client.vector_store.jobs.get(JOB_UID)
+            await client.vector_store.jobs.get(BUCKET_UID, JOB_UID)
 
-    assert captured["url"] == f"{DEFAULT_BASE_URL.rstrip('/')}/v1/vector-store/jobs/{JOB_UID}"
+    assert captured["url"] == f"{DEFAULT_BASE_URL.rstrip('/')}/v1/vector-store/jobs/{BUCKET_UID}/{JOB_UID}"
 
 
 @pytest.mark.asyncio

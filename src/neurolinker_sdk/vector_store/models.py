@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -20,12 +20,12 @@ Distance = Literal["cosine", "dot", "euclidean"]
 
 
 class FieldDef(BaseModel):
-    """Public field definition for collection creation.
+    """A field in a vector-store collection.
 
-    Uses abstract dtypes — the provider translates them to native types.
-    Provider-specific options go in ``options`` (e.g. Milvus's
-    ``enable_analyzer``). Each provider reads only the options it
-    understands and ignores the rest.
+    Uses abstract dtypes that the target provider translates to its
+    native types. Use ``options`` for provider-specific per-field
+    settings (e.g. Milvus's ``max_length`` or ``enable_analyzer``);
+    see the README for the keys each provider accepts.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -33,7 +33,7 @@ class FieldDef(BaseModel):
     name: str
     dtype: DType
     dim: Optional[int] = Field(default=None, ge=1)
-    distance: Distance = "cosine"
+    distance: Optional[Distance] = None
     is_primary: bool = False
     options: Dict[str, Any] = Field(default_factory=dict)
 
@@ -45,22 +45,35 @@ class FieldDef(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def _dense_vector_requires_dim(self) -> "FieldDef":
+    def _dense_vector_requires_dim(self) -> Self:
+        if self.distance is not None and self.dtype != "dense_vector":
+            raise ValueError(
+                f"Field '{self.name}': distance is only valid for dense_vector fields"
+            )
         if self.dtype == "dense_vector" and (self.dim is None or self.dim <= 0):
             raise ValueError(
                 f"Field '{self.name}': dense_vector requires dim > 0"
             )
+        if self.dtype == "dense_vector" and self.distance is None:
+            self.distance = "cosine"
         return self
 
 
 class CollectionSchema(BaseModel):
-    """Collection definition passed to ``POST /v1/vector-store/collections``."""
+    """Definition of a vector-store collection.
+
+    Use ``options`` for collection-wide provider settings such as
+    Pinecone serverless ``cloud`` and ``region``. Per-field settings
+    belong on :class:`FieldDef.options` instead. See the README for
+    the keys each provider accepts.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
     name: str
     fields: List[FieldDef] = Field(min_length=1)
     description: str = ""
+    options: Dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("name")
     @classmethod
@@ -70,7 +83,7 @@ class CollectionSchema(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def _validate_fields(self) -> "CollectionSchema":
+    def _validate_fields(self) -> Self:
         names = [f.name for f in self.fields]
         if len(names) != len(set(names)):
             raise ValueError("Duplicate field names in collection")
@@ -83,14 +96,14 @@ class CollectionSchema(BaseModel):
 class VectorDBConfig(BaseModel):
     """Vector database connection configuration.
 
-    Pass ``secret_id`` to reference the credential by Secret Manager id;
-    the actual value is resolved server-side at job execution time.
+    ``api_key`` is the connection token for the target vector DB (Milvus /
+    Qdrant / Pinecone — detected automatically from ``uri``).
     """
 
     model_config = ConfigDict(extra="forbid")
 
     uri: str
-    secret_id: Optional[str] = None
+    api_key: Optional[str] = None
     timeout: int = 300
 
     @field_validator("uri")

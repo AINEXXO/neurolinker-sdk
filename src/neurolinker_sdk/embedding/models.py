@@ -1,101 +1,57 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Union
+from typing import List, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 _RESERVED_VECTOR_PREFIXES = ("item_", "chunk_")
-
-class ModelRef(BaseModel):
-    """Embedding model endpoint reference.
-
-    Provider is auto-detected server-side from the endpoint domain (internal,
-    ``jina.ai``, ``voyageai.com``, ...). Provider-specific fields (e.g. Voyage's
-    ``input_type``) are passed through as-is via ``extra="allow"``.
-
-    For external providers, pass ``secret_id`` to reference the provider's
-    credential by Secret Manager id; the actual value is resolved server-side
-    at job execution time. Internal models need no credential.
-    """
-
-    model_config = ConfigDict(extra="allow")
-
-    endpoint: str
-    model_name: str
-    secret_id: Optional[str] = None
-
-    @field_validator("endpoint")
-    @classmethod
-    def _endpoint_must_be_url(cls, v: str) -> str:
-        if not v.startswith(("http://", "https://")):
-            raise ValueError(
-                "endpoint must be a valid URL starting with http:// or https://"
-            )
-        return v
+_ALLOWED_INPUTS_BY_CONTENT_TYPE = {
+    "text": {"content", "header_path"},
+    "image": {"description", "extracted_text", "image_base64", "legend", "header_path"},
+    "table": {"content", "description", "data", "legend", "header_path"},
+}
 
 
-class VectorConfig(BaseModel):
-    """One vector (dense or sparse) for a modality."""
+class EmbeddingVector(BaseModel):
+    """A dense or sparse vector to compute for an embedding content block."""
 
     model_config = ConfigDict(extra="forbid")
 
-    vector_name: str
-    model: ModelRef
-    inputs: List[str] = Field(default_factory=list)
+    vector_type: Literal["dense", "sparse"]
+    field_name: str
+    model_name: str
+    api_key: str | None = None
 
-    @field_validator("vector_name")
+    @field_validator("field_name")
     @classmethod
-    def _vector_name_not_reserved(cls, v: str) -> str:
+    def _field_name_not_reserved(cls, v: str) -> str:
         for reserved in _RESERVED_VECTOR_PREFIXES:
             if v.startswith(reserved):
                 raise ValueError(
-                    f"vector_name cannot start with '{reserved}' — reserved "
-                    f"namespace for internal fields. Got: '{v}'"
+                    f"field_name cannot start with '{reserved}' — reserved namespace for internal fields. Got: '{v}'"
                 )
         return v
 
 
-class ModalityVectors(BaseModel):
-    """Dense and/or sparse vector configs for a modality.
-
-    Each slot accepts a single ``VectorConfig`` or a list (multiple vectors per
-    type — e.g. two dense models in parallel).
-    """
+class Content(BaseModel):
+    """An embedding content block: a modality plus the vectors to compute for it."""
 
     model_config = ConfigDict(extra="forbid")
 
-    dense: Optional[Union[VectorConfig, List[VectorConfig]]] = None
-    sparse: Optional[Union[VectorConfig, List[VectorConfig]]] = None
+    content_type: Literal["text", "image", "table"]
+    inputs: List[str] = Field(default_factory=list)
+    vectors: List[EmbeddingVector] = Field(min_length=1)
 
+    @model_validator(mode="after")
+    def _validate_inputs_for_content_type(self) -> Self:
+        allowed = _ALLOWED_INPUTS_BY_CONTENT_TYPE[self.content_type]
+        invalid = sorted(set(self.inputs) - allowed)
+        if invalid:
+            invalid_list = ", ".join(invalid)
+            allowed_list = ", ".join(sorted(allowed))
+            raise ValueError(
+                f"Invalid inputs for content_type '{self.content_type}': {invalid_list}. Allowed inputs: {allowed_list}"
+            )
+        return self
 
-class TextModality(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    vectors: ModalityVectors
-
-
-class ImageModality(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    vectors: ModalityVectors
-
-
-class TableModality(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    vectors: ModalityVectors
-
-
-class EmbeddingModalities(BaseModel):
-    """Top-level modality container for an embedding job."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    text: Optional[TextModality] = None
-    image: Optional[ImageModality] = None
-    table: Optional[TableModality] = None
-
-    def to_payload(self) -> Dict[str, Any]:
-        """Serialize to the JSON shape expected by ``POST /v1/embed/jobs``.
-
-        Only populated modalities are included; ``None`` fields are dropped.
-        """
-        return self.model_dump(exclude_none=True)
 

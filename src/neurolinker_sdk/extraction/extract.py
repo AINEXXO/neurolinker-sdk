@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
@@ -12,6 +13,23 @@ from ..http import (
     _json_headers,
     _raise_for_status,
 )
+
+
+class EnrichmentMode(str, Enum):
+    BASE = "base"
+    TURBO = "turbo"
+
+
+def _normalize_enrichment_mode(enrichment_mode: EnrichmentMode | str | None) -> str | None:
+    if enrichment_mode is None:
+        return None
+    try:
+        return EnrichmentMode(enrichment_mode).value
+    except ValueError as exc:
+        valid = tuple(mode.value for mode in EnrichmentMode)
+        raise NeuroLinkerConfigError(
+            f"enrichment_mode must be one of {valid}, got {enrichment_mode!r}."
+        ) from exc
 
 
 def _validate_submit_modes(
@@ -50,39 +68,47 @@ class ExtractResource:
         urls: Optional[List[str]] = None,
         alias: Optional[str] = None,
         description: Optional[str] = None,
+        enrichment_mode: EnrichmentMode | str | None = None,
     ) -> Dict[str, Any]:
         """
         POST /v1/extract
 
         Contract (per documentation):
-          - If uploading files via 'documents', then 'form' must be an empty JSON object: {}.
+          - If uploading files via 'documents', then 'form' must be an empty JSON object: {}
+            (or carry optional keys like ``enrichment_mode``).
           - If providing URLs in 'form', then 'documents' must be an empty list: [].
+
+        ``enrichment_mode`` selects how Picture/Table content is enriched:
+        ``"base"`` (default backend) for description only, ``"turbo"`` for description plus
+        extracted_text and legend with surrounding-page context. Omit (``None``) to let
+        the backend pick its default.
 
         This method enforces the contract by:
           - Rejecting mixed usage (documents + urls)
-          - For documents mode: forcing form="{}"
-          - For urls mode: using form with documents_url + optional alias/description
+          - Building the form JSON consistently across both modes
         """
         has_docs = bool(documents)
         has_urls = bool(urls)
         _validate_submit_modes(has_docs=has_docs, has_urls=has_urls, method_label="extract")
+        enrichment_mode_value = _normalize_enrichment_mode(enrichment_mode)
 
         url = _build_url(self._base_url, "/v1/extract")
         headers = _json_headers(self._token)
 
-        if has_docs:
-            files = _coerce_files(documents)
-            data = {"form": "{}"}
-            resp = self._client.post(url, headers=headers, data=data, files=files)
-            _raise_for_status(resp)
-            return resp.json()
-
         form_json = _encode_form_payload(
-            urls=urls,
+            urls=urls if has_urls else None,
             alias=alias,
             description=description,
+            enrichment_mode=enrichment_mode_value,
         )
-        resp = self._client.post(url, headers=headers, data={"form": form_json}, files=[])
+        data = {"form": form_json}
+
+        if has_docs:
+            files = _coerce_files(documents)
+            resp = self._client.post(url, headers=headers, data=data, files=files)
+        else:
+            resp = self._client.post(url, headers=headers, data=data, files=[])
+
         _raise_for_status(resp)
         return resp.json()
 
@@ -161,31 +187,36 @@ class AsyncExtractResource:
         urls: Optional[List[str]] = None,
         alias: Optional[str] = None,
         description: Optional[str] = None,
+        enrichment_mode: EnrichmentMode | str | None = None,
     ) -> Dict[str, Any]:
         """
         Async version of ExtractResource.extract().
         Enforces the same request contract described in the sync method.
+        ``enrichment_mode`` selects ``"base"`` (description only) or ``"turbo"``
+        (description + extracted_text + legend with neighbouring-page context).
         """
         has_docs = bool(documents)
         has_urls = bool(urls)
         _validate_submit_modes(has_docs=has_docs, has_urls=has_urls, method_label="extract")
+        enrichment_mode_value = _normalize_enrichment_mode(enrichment_mode)
 
         url = _build_url(self._base_url, "/v1/extract")
         headers = _json_headers(self._token)
 
-        if has_docs:
-            files = _coerce_files(documents)
-            data = {"form": "{}"}
-            resp = await self._client.post(url, headers=headers, data=data, files=files)
-            _raise_for_status(resp)
-            return resp.json()
-
         form_json = _encode_form_payload(
-            urls=urls,
+            urls=urls if has_urls else None,
             alias=alias,
             description=description,
+            enrichment_mode=enrichment_mode_value,
         )
-        resp = await self._client.post(url, headers=headers, data={"form": form_json}, files=[])
+        data = {"form": form_json}
+
+        if has_docs:
+            files = _coerce_files(documents)
+            resp = await self._client.post(url, headers=headers, data=data, files=files)
+        else:
+            resp = await self._client.post(url, headers=headers, data=data, files=[])
+
         _raise_for_status(resp)
         return resp.json()
 

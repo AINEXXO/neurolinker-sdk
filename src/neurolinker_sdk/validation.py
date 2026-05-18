@@ -27,14 +27,17 @@ def normalize_pydantic(
     ``Annotated`` types like ``ChunkingConfig``). ``BaseModel`` instances are dumped
     directly; dicts are validated through ``schema``.
     """
-    if isinstance(value, BaseModel):
-        return value.model_dump(exclude_none=True)
-    if isinstance(value, dict):
+    if isinstance(value, (BaseModel, dict)):
+        raw_value = (
+            value.model_dump(exclude_none=True)
+            if isinstance(value, BaseModel)
+            else value
+        )
         try:
             validated = (
-                schema.validate_python(value)
+                schema.validate_python(raw_value)
                 if isinstance(schema, TypeAdapter)
-                else schema.model_validate(value)
+                else schema.model_validate(raw_value)
             )
         except ValidationError as exc:
             raise NeuroLinkerConfigError(f"Invalid {label}: {exc}") from exc

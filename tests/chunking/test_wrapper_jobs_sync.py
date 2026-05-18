@@ -26,9 +26,9 @@ def test_wrapper_jobs_get_sync_uses_default_base_url_when_missing() -> None:
 
     with httpx.Client(transport=httpx.MockTransport(handler)) as http_client:
         with NeuroLinker(token="nl_dummy", http_client=http_client, timeout_s=1.0) as client:
-            client.chunking.jobs.get(JOB_UID)
+            client.chunking.jobs.get(BUCKET_UID, JOB_UID)
 
-    assert captured["url"] == f"{DEFAULT_BASE_URL.rstrip('/')}/v1/chunk/jobs/{JOB_UID}"
+    assert captured["url"] == f"{DEFAULT_BASE_URL.rstrip('/')}/v1/chunk/jobs/{BUCKET_UID}/{JOB_UID}"
 
 
 def test_wrapper_jobs_create_sync_uses_default_base_url_when_missing() -> None:

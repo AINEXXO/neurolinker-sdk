@@ -10,6 +10,8 @@ from ..http import _build_url, _json_headers, _raise_for_status
 from ..polling import wait_for_terminal_status, wait_for_terminal_status_async
 from .models import FieldMapping, VectorDBConfig
 
+_TERMINAL_STATES = frozenset({"completed", "failed"})
+
 
 def _build_load_job_payload(
     bucket_uid: str,
@@ -75,13 +77,15 @@ class JobsResource:
         _raise_for_status(resp)
         return resp.json()
 
-    def get(self, job_uid: str) -> Dict[str, Any]:
-        """GET /v1/vector-store/jobs/{job_uid}"""
+    def get(self, bucket_uid: str, job_uid: str) -> Dict[str, Any]:
+        """GET /v1/vector-store/jobs/{bucket_uid}/{job_uid}"""
+        if not bucket_uid:
+            raise NeuroLinkerConfigError("bucket_uid must be a non-empty string.")
         if not job_uid:
             raise NeuroLinkerConfigError("job_uid must be a non-empty string.")
 
         resp = self._client.get(
-            _build_url(self._base_url, f"/v1/vector-store/jobs/{job_uid}"),
+            _build_url(self._base_url, f"/v1/vector-store/jobs/{bucket_uid}/{job_uid}"),
             headers=_json_headers(self._token),
         )
         _raise_for_status(resp)
@@ -89,15 +93,16 @@ class JobsResource:
 
     def wait(
         self,
+        bucket_uid: str,
         job_uid: str,
         *,
         timeout_s: Optional[float] = None,
         poll_interval_s: Optional[float] = None,
         poll_max_interval_s: Optional[float] = None,
     ) -> Dict[str, Any]:
-        """Poll ``/v1/vector-store/jobs/{job_uid}`` until a terminal state or timeout."""
+        """Poll ``/v1/vector-store/jobs/{bucket_uid}/{job_uid}`` until a terminal state or timeout."""
         return wait_for_terminal_status(
-            fetch_status=lambda: self.get(job_uid),
+            fetch_status=lambda: self.get(bucket_uid, job_uid),
             extract_status=lambda r: r.get("status"),
             timeout_s=self._timeout_s if timeout_s is None else timeout_s,
             poll_interval_s=(
@@ -108,6 +113,7 @@ class JobsResource:
                 if poll_max_interval_s is None
                 else poll_max_interval_s
             ),
+            terminal_states=_TERMINAL_STATES,
             identifier=f"vector-load job {job_uid}",
         )
 
@@ -150,12 +156,15 @@ class AsyncJobsResource:
         _raise_for_status(resp)
         return resp.json()
 
-    async def get(self, job_uid: str) -> Dict[str, Any]:
+    async def get(self, bucket_uid: str, job_uid: str) -> Dict[str, Any]:
+        """GET /v1/vector-store/jobs/{bucket_uid}/{job_uid}"""
+        if not bucket_uid:
+            raise NeuroLinkerConfigError("bucket_uid must be a non-empty string.")
         if not job_uid:
             raise NeuroLinkerConfigError("job_uid must be a non-empty string.")
 
         resp = await self._client.get(
-            _build_url(self._base_url, f"/v1/vector-store/jobs/{job_uid}"),
+            _build_url(self._base_url, f"/v1/vector-store/jobs/{bucket_uid}/{job_uid}"),
             headers=_json_headers(self._token),
         )
         _raise_for_status(resp)
@@ -163,6 +172,7 @@ class AsyncJobsResource:
 
     async def wait(
         self,
+        bucket_uid: str,
         job_uid: str,
         *,
         timeout_s: Optional[float] = None,
@@ -170,7 +180,7 @@ class AsyncJobsResource:
         poll_max_interval_s: Optional[float] = None,
     ) -> Dict[str, Any]:
         async def _fetch() -> Dict[str, Any]:
-            return await self.get(job_uid)
+            return await self.get(bucket_uid, job_uid)
 
         return await wait_for_terminal_status_async(
             fetch_status=_fetch,
@@ -184,5 +194,6 @@ class AsyncJobsResource:
                 if poll_max_interval_s is None
                 else poll_max_interval_s
             ),
+            terminal_states=_TERMINAL_STATES,
             identifier=f"vector-load job {job_uid}",
         )

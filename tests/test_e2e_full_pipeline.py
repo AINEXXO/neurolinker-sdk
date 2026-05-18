@@ -13,11 +13,8 @@ from neurolinker_sdk import (
 )
 from neurolinker_sdk.chunking import SectionGreedyConfig
 from neurolinker_sdk.embedding import (
-    EmbeddingModalities,
-    ModalityVectors,
-    ModelRef,
-    TextModality,
-    VectorConfig,
+    Content,
+    EmbeddingVector,
 )
 from neurolinker_sdk.vector_store import (
     CollectionSchema,
@@ -64,24 +61,11 @@ def test_e2e_full_pipeline_sync() -> None:
     """Extraction -> bucket -> chunk -> embed -> vector_store, all in one go."""
     suffix = uuid.uuid4().hex[:8]
     bucket_name = f"sdk-full-e2e-{suffix}"
-    secret_name = f"sdk-full-e2e-vdb-{suffix}"
 
     bucket_uid: Optional[str] = None
-    secret_id: Optional[str] = None
 
     with NeuroLinker.from_env() as client:
         try:
-            # ----------------------------------------------------------------
-            # 0) Managed secret — production BYOK path for the vector DB key.
-            # ----------------------------------------------------------------
-            secret_resp = client.management.secrets.create(
-                name=secret_name, value=VECTOR_DB_API_KEY
-            )
-            secret_id = secret_resp.get("secret_id")
-            assert isinstance(secret_id, str) and secret_id, (
-                f"secrets.create did not return a usable secret_id: {secret_resp}"
-            )
-
             # ----------------------------------------------------------------
             # 1) Extract a PDF
             # ----------------------------------------------------------------
@@ -118,7 +102,7 @@ def test_e2e_full_pipeline_sync() -> None:
             chunk_job_uid = chunk_submit.get("job_uid")
             assert isinstance(chunk_job_uid, str) and chunk_job_uid
 
-            chunk_final = client.chunking.jobs.wait(chunk_job_uid)
+            chunk_final = client.chunking.jobs.wait(bucket_uid, chunk_job_uid)
             assert chunk_final.get("status") == "completed", (
                 f"Chunking did not complete: {chunk_final}"
             )
@@ -127,27 +111,27 @@ def test_e2e_full_pipeline_sync() -> None:
             # 4) Embedding — internal text-dense model (no BYOK key)
             # ----------------------------------------------------------------
             model = _pick_text_dense_model(client)
-            modalities = EmbeddingModalities(
-                text=TextModality(
-                    vectors=ModalityVectors(
-                        dense=VectorConfig(
-                            vector_name="text_dense_e2e",
-                            model=ModelRef(
-                                endpoint=model["endpoint"],
-                                model_name=model["name"],
-                            ),
-                            inputs=["content"],
+            embeddings = [
+                Content(
+                    content_type="text",
+                    inputs=["content"],
+                    vectors=[
+                        EmbeddingVector(
+                            vector_type="dense",
+                            field_name="text_dense_e2e",
+                            model_name=model["name"],
                         ),
-                    ),
-                ),
-            )
+                    ],
+                )
+            ]
             embed_submit = client.embedding.jobs.create(
-                bucket_uid=bucket_uid, modalities=modalities
+                bucket_uid=bucket_uid,
+                embeddings=embeddings,
             )
             embed_job_uid = embed_submit.get("job_uid")
             assert isinstance(embed_job_uid, str) and embed_job_uid
 
-            embed_final = client.embedding.jobs.wait(embed_job_uid)
+            embed_final = client.embedding.jobs.wait(bucket_uid, embed_job_uid)
             assert embed_final.get("status") == "completed", (
                 f"Embedding did not complete: {embed_final}"
             )
@@ -164,7 +148,7 @@ def test_e2e_full_pipeline_sync() -> None:
                     FieldDef(name="text_dense", dtype="dense_vector", dim=VECTOR_DIM),
                 ],
             )
-            vdb = VectorDBConfig(uri=VECTOR_DB_URI, secret_id=secret_id)
+            vdb = VectorDBConfig(uri=VECTOR_DB_URI, api_key=VECTOR_DB_API_KEY)
 
             create_resp = client.vector_store.collections.create(
                 collection=collection, vector_db_config=vdb
@@ -184,20 +168,14 @@ def test_e2e_full_pipeline_sync() -> None:
             load_job_uid = load_submit.get("job_uid")
             assert isinstance(load_job_uid, str) and load_job_uid
 
-            load_final = client.vector_store.jobs.wait(load_job_uid)
+            load_final = client.vector_store.jobs.wait(bucket_uid, load_job_uid)
             assert load_final.get("status") == "completed", (
                 f"Vector-store load did not complete: {load_final}"
             )
             assert load_final.get("collection_name") == COLLECTION_NAME
         finally:
-            # Best-effort cleanup — never raise from teardown.
             if bucket_uid:
                 try:
                     client.management.buckets.delete(bucket_uid)
                 except Exception as exc:  # noqa: BLE001
                     print(f"\n[cleanup] delete bucket {bucket_uid}: {exc}")
-            if secret_id:
-                try:
-                    client.management.secrets.delete(secret_id)
-                except Exception as exc:  # noqa: BLE001
-                    print(f"\n[cleanup] delete secret {secret_id}: {exc}")

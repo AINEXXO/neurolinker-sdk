@@ -4,11 +4,8 @@ import pytest
 
 from neurolinker_sdk import AsyncNeuroLinker, NeuroLinker
 from neurolinker_sdk.embedding import (
-    EmbeddingModalities,
-    ModalityVectors,
-    ModelRef,
-    TextModality,
-    VectorConfig,
+    Content,
+    EmbeddingVector,
 )
 from neurolinker_sdk.polling import (
     wait_for_terminal_status,
@@ -45,21 +42,20 @@ def _pick_text_model(models_payload: dict) -> dict:
     raise AssertionError(f"No model with 'dense' vector_types in: {models}")
 
 
-def _build_modalities(model: dict) -> EmbeddingModalities:
-    return EmbeddingModalities(
-        text=TextModality(
-            vectors=ModalityVectors(
-                dense=VectorConfig(
-                    vector_name="text_dense_e2e",
-                    model=ModelRef(
-                        endpoint=model["endpoint"],
-                        model_name=model["name"],
-                    ),
-                    inputs=["content"],
+def _build_embeddings(model: dict) -> list[Content]:
+    return [
+        Content(
+            content_type="text",
+            inputs=["content"],
+            vectors=[
+                EmbeddingVector(
+                    vector_type="dense",
+                    field_name="text_dense_e2e",
+                    model_name=model["name"],
                 ),
-            ),
-        ),
-    )
+            ],
+        )
+    ]
 
 
 def test_e2e_embedding_full_flow_sync() -> None:
@@ -67,12 +63,12 @@ def test_e2e_embedding_full_flow_sync() -> None:
         # 1) list models
         models = client.embedding.list_models()
         model = _pick_text_model(models)
-        print(f"[embedding e2e] picked model: {model.get('name')} @ {model.get('endpoint')}")
+        print(f"[embedding e2e] picked model: {model.get('name')}")
 
         # 2) submit job
         submit = client.embedding.jobs.create(
             bucket_uid=BUCKET_UID,
-            modalities=_build_modalities(model),
+            embeddings=_build_embeddings(model),
         )
         job_uid = submit.get("job_uid")
         assert isinstance(job_uid, str) and job_uid, (
@@ -82,7 +78,7 @@ def test_e2e_embedding_full_flow_sync() -> None:
 
         # 3) strict wait
         final = wait_for_terminal_status(
-            fetch_status=lambda: client.embedding.jobs.get(job_uid),
+            fetch_status=lambda: client.embedding.jobs.get(BUCKET_UID, job_uid),
             extract_status=_extract_status,
             timeout_s=1100.0,
             poll_interval_s=2.0,
@@ -111,18 +107,18 @@ async def test_e2e_embedding_full_flow_async() -> None:
     async with AsyncNeuroLinker.from_env() as client:
         models = await client.embedding.list_models()
         model = _pick_text_model(models)
-        print(f"[embedding e2e async] picked model: {model.get('name')} @ {model.get('endpoint')}")
+        print(f"[embedding e2e async] picked model: {model.get('name')}")
 
         submit = await client.embedding.jobs.create(
             bucket_uid=BUCKET_UID,
-            modalities=_build_modalities(model),
+            embeddings=_build_embeddings(model),
         )
         job_uid = submit.get("job_uid")
         assert isinstance(job_uid, str) and job_uid
         print(f"[embedding e2e async] submitted job {job_uid}")
 
         async def _fetch() -> dict:
-            return await client.embedding.jobs.get(job_uid)
+            return await client.embedding.jobs.get(BUCKET_UID, job_uid)
 
         final = await wait_for_terminal_status_async(
             fetch_status=_fetch,

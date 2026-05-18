@@ -47,7 +47,7 @@ def test_e2e_chunking_full_flow_sync() -> None:
 
         # 2) strict wait
         final = wait_for_terminal_status(
-            fetch_status=lambda: client.chunking.jobs.get(job_uid),
+            fetch_status=lambda: client.chunking.jobs.get(BUCKET_UID, job_uid),
             extract_status=_extract_status,
             timeout_s=540.0,
             poll_interval_s=2.0,
@@ -89,7 +89,7 @@ async def test_e2e_chunking_full_flow_async() -> None:
         print(f"[chunking e2e async] submitted job {job_uid}")
 
         async def _fetch() -> dict:
-            return await client.chunking.jobs.get(job_uid)
+            return await client.chunking.jobs.get(BUCKET_UID, job_uid)
 
         final = await wait_for_terminal_status_async(
             fetch_status=_fetch,

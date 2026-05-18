@@ -64,6 +64,7 @@ def _encode_form_payload(
     alias: Optional[str],
     description: Optional[str] = None,
     json_schema: Optional[Dict[str, Any]] = None,
+    enrichment_mode: Optional[str] = None,
 ) -> str:
     """Build the JSON payload sent in the ``form`` field for multipart submissions.
 
@@ -74,6 +75,8 @@ def _encode_form_payload(
     - ``alias``: optional alias for the request
     - ``description``: optional description for the request
     - ``json_schema``: REQUIRED for ``/v1/extract-fields``, omitted for ``/v1/extract``
+    - ``enrichment_mode``: optional Picture/Table enrichment mode (``"base"`` | ``"turbo"``).
+      Only relevant for ``/v1/extract``; omitted when ``None`` so the backend uses its default.
     """
     payload: Dict[str, Any] = {}
 
@@ -85,5 +88,7 @@ def _encode_form_payload(
         payload["description"] = description
     if json_schema is not None:
         payload["json_schema"] = json_schema
+    if enrichment_mode is not None:
+        payload["enrichment_mode"] = enrichment_mode
 
     return json.dumps(payload)

@@ -5,6 +5,7 @@ from typing import List
 
 import httpx
 import pytest
+from pydantic import BaseModel
 
 from neurolinker_sdk import AsyncNeuroLinker, NeuroLinker, NeuroLinkerConfigError
 from neurolinker_sdk.chunking import BlockWindowConfig, SectionGreedyConfig
@@ -97,6 +98,18 @@ def test_create_job_rejects_invalid_dict_payload() -> None:
             client.chunking.jobs.create(bucket_uid=BUCKET_UID, chunking=42)  # type: ignore[arg-type]
 
 
+def test_create_job_rejects_unrelated_pydantic_model() -> None:
+    class NotAChunkingConfig(BaseModel):
+        totally_different: int = 1
+
+    with NeuroLinker(token="nl_dummy", timeout_s=1.0) as client:
+        with pytest.raises(NeuroLinkerConfigError):
+            client.chunking.jobs.create(
+                bucket_uid=BUCKET_UID,
+                chunking=NotAChunkingConfig(),
+            )
+
+
 def test_create_job_rejects_empty_bucket_uid() -> None:
     with NeuroLinker(token="nl_dummy", timeout_s=1.0) as client:
         with pytest.raises(NeuroLinkerConfigError):
@@ -152,10 +165,10 @@ def test_get_job_sync() -> None:
 
     with httpx.Client(transport=httpx.MockTransport(handler)) as http_client:
         with NeuroLinker(token="nl_dummy", http_client=http_client, timeout_s=1.0) as client:
-            resp = client.chunking.jobs.get(JOB_UID)
+            resp = client.chunking.jobs.get(BUCKET_UID, JOB_UID)
 
     assert captured["method"] == "GET"
-    assert captured["url"].endswith(f"/v1/chunk/jobs/{JOB_UID}")
+    assert captured["url"].endswith(f"/v1/chunk/jobs/{BUCKET_UID}/{JOB_UID}")
     assert resp["status"] == "completed"
 
 
@@ -182,7 +195,7 @@ def test_wait_for_job_sync_polls_until_terminal() -> None:
             poll_interval_s=0.0,
             poll_max_interval_s=0.0,
         ) as client:
-            final = client.chunking.jobs.wait(JOB_UID)
+            final = client.chunking.jobs.wait(BUCKET_UID, JOB_UID)
 
     assert final["status"] == "completed"
 
@@ -204,7 +217,7 @@ def test_wait_for_job_sync_tolerates_404_transient() -> None:
             poll_interval_s=0.0,
             poll_max_interval_s=0.0,
         ) as client:
-            final = client.chunking.jobs.wait(JOB_UID)
+            final = client.chunking.jobs.wait(BUCKET_UID, JOB_UID)
 
     assert final["status"] == "completed"
     assert calls["n"] == 2
@@ -228,7 +241,7 @@ async def test_wait_for_job_async_polls() -> None:
             poll_interval_s=0.0,
             poll_max_interval_s=0.0,
         ) as client:
-            final = await client.chunking.jobs.wait(JOB_UID)
+            final = await client.chunking.jobs.wait(BUCKET_UID, JOB_UID)
 
     assert final["status"] == "completed"
 

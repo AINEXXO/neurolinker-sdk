@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Self, Tuple
 
 import httpx
 
@@ -31,13 +31,12 @@ from .embedding.models_api import (
 )
 from .embedding.models_api import ModelsResource as EmbeddingModelsResource
 from .extraction.documents import AsyncDocumentsResource, DocumentsResource
-from .extraction.extract import AsyncExtractResource, ExtractResource
+from .extraction.extract import AsyncExtractResource, EnrichmentMode, ExtractResource
 from .extraction.helpers import extract_status
 from .extraction.status import AsyncStatusResource, StatusResource
 from .extraction.tasks import AsyncTasksResource, TasksResource
 from .extraction.zip import AsyncZipResource, ZipResource
 from .management.buckets import AsyncBucketsResource, BucketsResource
-from .management.secrets import AsyncSecretsResource, SecretsResource
 from .vector_store.collections import (
     AsyncCollectionsResource as AsyncVectorStoreCollectionsResource,
 )
@@ -92,9 +91,14 @@ class ExtractionModule:
         urls: Optional[List[str]] = None,
         alias: Optional[str] = None,
         description: Optional[str] = None,
+        enrichment_mode: Optional[EnrichmentMode] = None,
     ) -> Dict[str, Any]:
         return self._extract.extract(
-            documents=documents, urls=urls, alias=alias, description=description
+            documents=documents,
+            urls=urls,
+            alias=alias,
+            description=description,
+            enrichment_mode=enrichment_mode,
         )
 
     def extract_fields(
@@ -189,9 +193,14 @@ class AsyncExtractionModule:
         urls: Optional[List[str]] = None,
         alias: Optional[str] = None,
         description: Optional[str] = None,
+        enrichment_mode: Optional[EnrichmentMode] = None,
     ) -> Dict[str, Any]:
         return await self._extract.extract(
-            documents=documents, urls=urls, alias=alias, description=description
+            documents=documents,
+            urls=urls,
+            alias=alias,
+            description=description,
+            enrichment_mode=enrichment_mode,
         )
 
     async def extract_fields(
@@ -398,7 +407,7 @@ class AsyncEmbeddingModule:
 
 
 class ManagementModule:
-    """Management module — bucket and secret CRUD."""
+    """Management module — bucket CRUD."""
 
     def __init__(
         self,
@@ -408,7 +417,6 @@ class ManagementModule:
         client: httpx.Client,
     ):
         self.buckets = BucketsResource(base_url, token, client)
-        self.secrets = SecretsResource(base_url, token, client)
 
 
 class AsyncManagementModule:
@@ -420,7 +428,6 @@ class AsyncManagementModule:
         client: httpx.AsyncClient,
     ):
         self.buckets = AsyncBucketsResource(base_url, token, client)
-        self.secrets = AsyncSecretsResource(base_url, token, client)
 
 
 class VectorStoreModule:
@@ -537,7 +544,7 @@ class NeuroLinker:
         timeout_s: Optional[float] = None,
         poll_interval_s: Optional[float] = None,
         poll_max_interval_s: Optional[float] = None,
-    ) -> "NeuroLinker":
+    ) -> NeuroLinker:
         cfg = NeuroLinkerConfig.from_env()
         return NeuroLinker(
             base_url=cfg.base_url,
@@ -552,7 +559,7 @@ class NeuroLinker:
     def close(self) -> None:
         self._client.close()
 
-    def __enter__(self) -> "NeuroLinker":
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:
@@ -627,7 +634,7 @@ class AsyncNeuroLinker:
         timeout_s: Optional[float] = None,
         poll_interval_s: Optional[float] = None,
         poll_max_interval_s: Optional[float] = None,
-    ) -> "AsyncNeuroLinker":
+    ) -> AsyncNeuroLinker:
         cfg = NeuroLinkerConfig.from_env()
         return AsyncNeuroLinker(
             base_url=cfg.base_url,
@@ -642,7 +649,7 @@ class AsyncNeuroLinker:
     async def aclose(self) -> None:
         await self._client.aclose()
 
-    async def __aenter__(self) -> "AsyncNeuroLinker":
+    async def __aenter__(self) -> Self:
         return self
 
     async def __aexit__(self, exc_type, exc, tb) -> None:

@@ -1,19 +1,6 @@
-from .models import (
-    EmbeddingModalities,
-    ImageModality,
-    ModalityVectors,
-    ModelRef,
-    TableModality,
-    TextModality,
-    VectorConfig,
-)
+from .models import Content, EmbeddingVector
 
 __all__ = [
-    "EmbeddingModalities",
-    "TextModality",
-    "ImageModality",
-    "TableModality",
-    "ModalityVectors",
-    "VectorConfig",
-    "ModelRef",
+    "Content",
+    "EmbeddingVector",
 ]

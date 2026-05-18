@@ -12,16 +12,18 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+FAKE_BUCKET_UID = "bkt_00000000-0000-0000-0000-000000000000"
 FAKE_JOB_UID = "job_00000000-0000-0000-0000-000000000000"
 
 
 def test_chunking_base_functionality_sync() -> None:
-    """Smoke: sync client reaches the chunking backend — a non-existent job_uid
-    returns a real 404, which proves ingress + auth + route wiring are correct.
+    """Smoke: sync client reaches the chunking backend — a non-existent
+    (bucket_uid, job_uid) returns a real 404, which proves ingress + auth +
+    route wiring are correct.
     """
     with NeuroLinker(token=TOKEN) as client:
         with pytest.raises(NeuroLinkerAPIError) as ei:
-            client.chunking.jobs.get(FAKE_JOB_UID)
+            client.chunking.jobs.get(FAKE_BUCKET_UID, FAKE_JOB_UID)
 
     assert ei.value.status_code == 404
 
@@ -30,6 +32,6 @@ def test_chunking_base_functionality_sync() -> None:
 async def test_chunking_base_functionality_async() -> None:
     async with AsyncNeuroLinker(token=TOKEN) as client:
         with pytest.raises(NeuroLinkerAPIError) as ei:
-            await client.chunking.jobs.get(FAKE_JOB_UID)
+            await client.chunking.jobs.get(FAKE_BUCKET_UID, FAKE_JOB_UID)
 
     assert ei.value.status_code == 404

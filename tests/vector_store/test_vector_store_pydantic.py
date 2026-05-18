@@ -64,6 +64,16 @@ def test_field_def_default_distance_is_cosine() -> None:
     assert cfg.distance == "cosine"
 
 
+def test_scalar_field_rejects_distance() -> None:
+    with pytest.raises(ValidationError):
+        FieldDef(name="x", dtype="text", distance="cosine")
+
+
+def test_sparse_vector_rejects_distance() -> None:
+    with pytest.raises(ValidationError):
+        FieldDef(name="s", dtype="sparse_vector", distance="dot")
+
+
 def test_field_def_accepts_options_dict() -> None:
     cfg = FieldDef(
         name="content",
@@ -131,12 +141,12 @@ def test_vector_db_config_rejects_empty_uri() -> None:
         VectorDBConfig(uri="")
 
 
-def test_vector_db_config_secret_id_preserved() -> None:
+def test_vector_db_config_api_key_preserved() -> None:
     cfg = VectorDBConfig(
         uri="https://example.zilliz.com",
-        secret_id="neurolinker__user_42__milvus_token",
+        api_key="cleartext-vdb-token",
     )
-    assert cfg.secret_id == "neurolinker__user_42__milvus_token"
+    assert cfg.api_key == "cleartext-vdb-token"
 
 
 def test_vector_db_config_default_timeout() -> None:
@@ -186,16 +196,14 @@ def test_field_mapping_forbids_extra_fields() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_vector_db_config_dump_excludes_none_secret_id() -> None:
-    # When secret_id is not provided, it must not appear in the dumped payload
-    # (the SDK only sends fields it was explicitly given).
+def test_vector_db_config_dump_excludes_none_api_key() -> None:
     cfg = VectorDBConfig(uri="https://example")
     dumped = cfg.model_dump(exclude_none=True)
-    assert "secret_id" not in dumped
+    assert "api_key" not in dumped
     assert dumped["uri"] == "https://example"
 
 
-def test_vector_db_config_dump_includes_secret_id_when_provided() -> None:
-    cfg = VectorDBConfig(uri="https://example", secret_id="s")
+def test_vector_db_config_dump_includes_api_key_when_provided() -> None:
+    cfg = VectorDBConfig(uri="https://example", api_key="k")
     dumped = cfg.model_dump(exclude_none=True)
-    assert dumped["secret_id"] == "s"
+    assert dumped["api_key"] == "k"
