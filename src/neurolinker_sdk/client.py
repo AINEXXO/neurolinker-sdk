@@ -32,7 +32,11 @@ from .embedding.models_api import (
 from .embedding.models_api import ModelsResource as EmbeddingModelsResource
 from .extraction.documents import AsyncDocumentsResource, DocumentsResource
 from .extraction.extract import AsyncExtractResource, EnrichmentMode, ExtractResource
-from .extraction.helpers import extract_status
+from .extraction.helpers import (
+    extract_document_ids as _extract_document_ids,
+    extract_request_uid as _extract_request_uid,
+    extract_status,
+)
 from .extraction.status import AsyncStatusResource, StatusResource
 from .extraction.tasks import AsyncTasksResource, TasksResource
 from .extraction.zip import AsyncZipResource, ZipResource
@@ -139,6 +143,16 @@ class ExtractionModule:
             content_types=content_types,
         )
 
+    @staticmethod
+    def extract_request_uid(extract_response: Dict[str, Any]) -> str:
+        """Return ``request_uid`` from an extract endpoint payload."""
+        return _extract_request_uid(extract_response)
+
+    @staticmethod
+    def extract_document_ids(status_response: Dict[str, Any]) -> List[str]:
+        """Return document IDs from a request-status payload."""
+        return _extract_document_ids(status_response)
+
     def wait_for_request(
         self,
         request_uid: str,
@@ -240,6 +254,16 @@ class AsyncExtractionModule:
             local_images=local_images,
             content_types=content_types,
         )
+
+    @staticmethod
+    def extract_request_uid(extract_response: Dict[str, Any]) -> str:
+        """Return ``request_uid`` from an extract endpoint payload."""
+        return _extract_request_uid(extract_response)
+
+    @staticmethod
+    def extract_document_ids(status_response: Dict[str, Any]) -> List[str]:
+        """Return document IDs from a request-status payload."""
+        return _extract_document_ids(status_response)
 
     async def wait_for_request(
         self,
