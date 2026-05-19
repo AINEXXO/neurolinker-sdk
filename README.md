@@ -46,12 +46,18 @@ load_dotenv()  # reads .env into os.environ
 ```python
 from neurolinker_sdk import NeuroLinker
 
-with NeuroLinker(token="nl_****") as client:
-    tasks = client.extraction.list_tasks()
-
-# with .env (after load_dotenv())
 with NeuroLinker.from_env() as client:
-    tasks = client.extraction.list_tasks()
+    # Submit a PDF for extraction
+    response = client.extraction.extract(urls=["https://example.com/your-doc.pdf"])
+    request_uid = client.extraction.extract_request_uid(response)
+
+    # Wait for completion (the SDK polls until the job reaches a terminal state)
+    status = client.extraction.wait_for_request(request_uid)
+    doc_ids = client.extraction.extract_document_ids(status)
+
+    # Fetch the extracted content
+    docs = client.extraction.documents.json(doc_ids)
+    print(docs)
 ```
 
 **Async**
@@ -59,12 +65,13 @@ with NeuroLinker.from_env() as client:
 ```python
 from neurolinker_sdk import AsyncNeuroLinker
 
-async with AsyncNeuroLinker(token="nl_****") as client:
-    tasks = await client.extraction.list_tasks()
-
-# with .env (after load_dotenv())
 async with AsyncNeuroLinker.from_env() as client:
-    tasks = await client.extraction.list_tasks()
+    response = await client.extraction.extract(urls=["https://example.com/your-doc.pdf"])
+    request_uid = client.extraction.extract_request_uid(response)
+    status = await client.extraction.wait_for_request(request_uid)
+    doc_ids = client.extraction.extract_document_ids(status)
+    docs = await client.extraction.documents.json(doc_ids)
+    print(docs)
 ```
 
 ## Pipeline overview
@@ -110,14 +117,20 @@ Two concepts to keep in mind:
 
 ### Constructors
 
-- `NeuroLinker(token, base_url=None, timeout_s=600.0, poll_interval_s=2.0, poll_max_interval_s=10.0, http_client=None)`
-Sync client. `token` is required; `base_url` defaults to `https://neurolinker.api.ainexxo.com`.
+- `NeuroLinker(token, base_url="https://neurolinker.api.ainexxo.com", timeout_s=600.0, poll_interval_s=2.0, poll_max_interval_s=10.0, http_client=None)`
+Sync client. `token` is required; all parameters are keyword-only.
 
-- `AsyncNeuroLinker(token, base_url=None, timeout_s=600.0, poll_interval_s=2.0, poll_max_interval_s=10.0, http_client=None)`
+- `AsyncNeuroLinker(token, base_url="https://neurolinker.api.ainexxo.com", timeout_s=600.0, poll_interval_s=2.0, poll_max_interval_s=10.0, http_client=None)`
 Async client. Same parameters as the sync version.
 
 - `NeuroLinker.from_env(timeout_s=None, poll_interval_s=None, poll_max_interval_s=None)`
 Loads `NEUROLINKER_API_KEY` from the environment. Per-call overrides accepted for all timing parameters.
+
+`from_env()` also reads (all optional):
+- `NEUROLINKER_BASE_URL` — overrides the default API endpoint
+- `NEUROLINKER_E2E_TIMEOUT_S` — request timeout (default `600`)
+- `NEUROLINKER_E2E_POLL_INTERVAL_S` — initial polling interval (default `2`)
+- `NEUROLINKER_E2E_POLL_MAX_INTERVAL_S` — max polling interval (default `10`)
 
 - `AsyncNeuroLinker.from_env(timeout_s=None, poll_interval_s=None, poll_max_interval_s=None)`
 Async version of `from_env`.
@@ -148,7 +161,7 @@ Both reserve credits at submit time on a per-page basis (see the platform docume
 - `client.extraction.extract(documents=None, urls=None, alias=None, description=None, enrichment_mode=None)`
 Submit a full-extraction job. Provide **either** `documents=[("file.pdf", b"...")]` (local PDF) **or** `urls=["https://..."]` (PDF URLs). The two are mutually exclusive — exactly one is required. Optional `enrichment_mode` is `"base"` (Picture/Table get description only) or `"turbo"` (description + `extracted_text` + `legend` with neighbouring-page context). Omit to use the backend default.
 
-- `client.extraction.extract_fields(json_schema={...}, documents=None, urls=None, alias=None, description=None)`
+- `client.extraction.extract_fields(json_schema, documents=None, urls=None, alias=None, description=None)`
 Submit a field-extraction job. `json_schema` is required and must follow JSON Schema Draft 7 (supported subset). Provide **either** `documents=[("file.pdf", b"...")]` (local PDFs) **or** `urls=["https://..."]` (PDF URLs). Same XOR rule as `extract`. Example:
 
 ```python
@@ -179,7 +192,7 @@ client.extraction.extract_fields(
 
 After completion, retrieve the extracted fields via `client.extraction.documents.fields(document_ids)`.
 
-- `client.extraction.generate_schema(description="...")`
+- `client.extraction.generate_schema(description)`
 Generate a JSON Schema from a natural-language description — the returned schema is ready to be passed to `extract_fields`. Example: `description="Extract invoice number, issue date, and total amount from an invoice"`.
 
 - `client.extraction.list_tasks()`
