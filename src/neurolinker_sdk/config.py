@@ -29,7 +29,7 @@ class NeuroLinkerConfig:
     poll_max_interval_s: float = DEFAULT_POLL_MAX_INTERVAL_S
 
     @staticmethod
-    def from_env() -> "NeuroLinkerConfig":
+    def from_env() -> NeuroLinkerConfig:
         base_url = os.getenv("NEUROLINKER_BASE_URL", "").strip()
         token = os.getenv("NEUROLINKER_API_KEY", "").strip()
         timeout_s = float(os.getenv("NEUROLINKER_E2E_TIMEOUT_S", str(DEFAULT_TIMEOUT_S)))
