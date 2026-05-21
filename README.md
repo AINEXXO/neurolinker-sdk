@@ -657,7 +657,7 @@ The SDK raises two exception types, both importable from `neurolinker_sdk`:
 
 ## Support
 
-- **Platform documentation** (pricing, quotas, account management): https://neurolinker.ainexxo.com/docs/index.html
+- **Platform documentation** (pricing, quotas, account management): https://neurolinker.ainexxo.com/docs/
 - **API key & dashboard**: https://neurolinker.ainexxo.com (login → API KEY section)
 - **Bug reports & feature requests**: open an issue on the SDK repository.
 
