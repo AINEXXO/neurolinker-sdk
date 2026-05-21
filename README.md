@@ -132,7 +132,10 @@ Loads `NEUROLINKER_API_KEY` from the environment. Per-call overrides accepted fo
 - `NEUROLINKER_E2E_POLL_INTERVAL_S` — initial polling interval (default `2`)
 - `NEUROLINKER_E2E_POLL_MAX_INTERVAL_S` — max polling interval (default `10`)
 
-- `AsyncNeuroLinker.from_env(timeout_s=None, poll_interval_s=None, poll_max_interval_s=None)`
+```python
+AsyncNeuroLinker.from_env(timeout_s=None, poll_interval_s=None, poll_max_interval_s=None)
+```
+
 Async version of `from_env`.
 
 ### Modules
