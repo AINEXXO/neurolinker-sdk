@@ -1,6 +1,6 @@
 # neurolinker-sdk
 
-NeuroLinker is a document intelligence service by Ainexxo S.R.L. that automates the full ingestion pipeline for RAG applications — from PDF extraction to vector-store loading. This SDK is the official Python client for the NeuroLinker API: it provides sync and async clients for the complete pipeline (extraction full and field-based, bucket management, chunking, embedding, and vector-store loading).
+NeuroLinker is a document intelligence service by Ainexxo S.R.L. that automates the full ingestion pipeline for RAG applications — from PDF extraction to vector-store loading. This SDK is the official Python client for the NeuroLinker API: it provides sync and async clients for the complete pipeline (extraction full and field-based, bucket management, chunking, embedding, and vector-store loading), plus one-shot RAG evaluation with Ragas metrics.
 
 ## Table of contents
 
@@ -13,6 +13,7 @@ NeuroLinker is a document intelligence service by Ainexxo S.R.L. that automates 
 - [Chunking](#chunking)
 - [Embedding](#embedding)
 - [Vector Store](#vector-store)
+- [Evaluation](#evaluation)
 - [End-to-end pipeline](#end-to-end-pipeline)
 - [Error handling](#error-handling)
 - [Support](#support)
@@ -25,6 +26,8 @@ pip install neurolinker-sdk
 ```
 
 Requires Python 3.11+.
+
+For continuous **evaluation tracking** of a live RAG, install the tracking extra plus your framework's OpenInference instrumentor — e.g. `pip install neurolinker-sdk[tracking] openinference-instrumentation-langchain`. Any OpenInference instrumentor works (`instrument()` auto-discovers it); for a custom RAG traced manually, `[tracking]` alone is enough. See [Evaluation](#evaluation).
 
 ## Quick start
 
@@ -76,7 +79,7 @@ async with AsyncNeuroLinker.from_env() as client:
 
 ## Pipeline overview
 
-The five modules are designed to compose end-to-end. A typical RAG ingestion run goes through them in order:
+The ingestion modules compose end-to-end. A typical RAG ingestion run goes through them in order:
 
 ```
    PDF (URL or upload)
@@ -137,7 +140,7 @@ Async version of `from_env`.
 
 ### Modules
 
-The SDK groups the API into five modules reachable as attributes on the client:
+The SDK groups the API into six modules reachable as attributes on the client:
 
 | Module | Purpose |
 |---|---|
@@ -146,6 +149,7 @@ The SDK groups the API into five modules reachable as attributes on the client:
 | `chunking` | Chunking jobs |
 | `embedding` | Embedding jobs |
 | `vector_store` | Vector-store collections and load jobs |
+| `evaluation` | RAG evaluation — one-shot batch (`.oneshot`) + continuous tracking (`.tracking`) |
 
 ## Extraction
 
@@ -568,9 +572,126 @@ CollectionSchema(
 )
 ```
 
+## Evaluation
+
+Evaluate your RAG with [Ragas](https://docs.ragas.io) metrics, in two complementary modes:
+
+- **One-shot** (`client.evaluation.oneshot`) — score a batch dataset of pre-computed RAG outputs.
+- **Tracking** (`client.evaluation.tracking` + `instrument`) — attach to a live RAG and score every query automatically, continuously.
+
+### One-shot
+
+Upload a JSONL dataset of pre-computed RAG outputs; the service scores every row and returns the per-row scores plus an aggregated summary. Black-box: the dataset is the only input — not coupled to buckets or the rest of the pipeline.
+
+The dataset is JSONL (one JSON object per line) with the Ragas-canonical columns. `user_input` and `response` are required; `retrieved_contexts` (list of strings) and `reference` (string) are optional — including them unlocks more metrics (faithfulness, the context metrics, answer/factual correctness, ...).
+
+- `client.evaluation.oneshot.jobs.create(dataset=("data.jsonl", b"..."))`
+Upload the JSONL dataset and enqueue the evaluation in one request. The dataset is passed in memory as `(filename, bytes)`; the filename must end with `.jsonl`. Returns the body carrying `eval_uid` + `status`.
+
+- `client.evaluation.oneshot.jobs.get(eval_uid)`
+Retrieve the current state of an evaluation (`pending` → `processing` → `completed` / `failed`); on completion it also carries `metrics_computed` / `metrics_skipped`.
+
+- `client.evaluation.oneshot.jobs.wait(eval_uid, timeout_s=None, poll_interval_s=None, poll_max_interval_s=None)`
+Poll until terminal status (`completed` / `failed`).
+
+- `client.evaluation.oneshot.results(eval_uid)`
+Fetch the result of a completed evaluation. Returns the parsed `result.json` — `{eval_uid, rows, summary}`: per-row metric scores plus an aggregated summary (mean / percentiles / count per metric). Raises if the result isn't available yet — call `jobs.wait` first.
+
+Example:
+
+```python
+import json
+
+from neurolinker_sdk import NeuroLinker
+
+rows = [
+    {
+        "user_input": "What is the capital of France?",
+        "response": "The capital of France is Paris.",
+        "retrieved_contexts": ["Paris is the capital and largest city of France."],
+        "reference": "Paris is the capital of France.",
+    },
+]
+dataset = ("data.jsonl", "\n".join(json.dumps(r) for r in rows).encode("utf-8"))
+
+with NeuroLinker.from_env() as client:
+    job = client.evaluation.oneshot.jobs.create(dataset=dataset)
+    client.evaluation.oneshot.jobs.wait(job["eval_uid"])
+    result = client.evaluation.oneshot.results(job["eval_uid"])
+    print(result["summary"])
+```
+
+### Tracking (continuous)
+
+Observe a RAG **in production**: attach the tracer once, and every query is traced to NeuroLinker, scored with Ragas, and surfaced in the dashboard. Same metrics as one-shot (the reference-free ones), computed continuously per query.
+
+**1. Create a track (once).** The `track_uid` ties every traced query to this app — store it.
+
+```python
+with NeuroLinker.from_env() as client:
+    track = client.evaluation.tracking.tracks.create(name="prod-rag")
+    print(track["track_uid"])
+```
+
+**2. Instrument your app — one line.** Install the tracking extra + your framework's OpenInference instrumentor, then call `instrument()` at startup:
+
+```bash
+pip install neurolinker-sdk[tracking] openinference-instrumentation-langchain
+# swap "langchain" for your framework (llama-index, openai, anthropic, haystack, ...)
+# instrument() auto-discovers whatever instrumentor is installed — no allow-list
+```
+
+```python
+import neurolinker_sdk
+
+neurolinker_sdk.instrument(track_uid="<track_uid>")
+```
+
+Your framework's calls are now traced **automatically**. Notes:
+
+- In a pre-forking server (gunicorn/uvicorn with workers), call `instrument()` **after** the fork (e.g. a post-fork hook), so the exporter thread lives in each worker.
+- If your app already runs OpenTelemetry, NeuroLinker **attaches** to it (spans reach both backends) rather than replacing it. The call is idempotent.
+- A short-lived script should call `provider.force_flush()` (on the returned provider) before exiting, so the last spans are sent.
+
+**Custom RAG with no framework instrumentor.** Install `[tracking]` and wrap each query, handing over the pieces explicitly:
+
+```python
+from neurolinker_sdk import instrument, record_query
+
+instrument(track_uid="<track_uid>", manual=True)  # manual=True silences the "no instrumentor" notice
+
+with record_query(user_input=question) as q:
+    docs = my_retriever(question)
+    q.set_contexts([d.text for d in docs])             # unlocks the context metrics
+    resp = my_llm(question, docs)                      # your own LLM call
+    q.set_response(resp.text)
+    q.set_llm(                                         # optional — values come from the LLM response
+        model=resp.model,
+        input_tokens=resp.usage.input_tokens,
+        output_tokens=resp.usage.output_tokens,
+    )
+```
+
+**Read the dashboard.**
+
+- `client.evaluation.tracking.tracks.create(name=...)` / `.list()` / `.set_active(track_uid, active=...)`
+Manage tracks. A disabled track stops accepting traces; its history stays readable.
+
+- `client.evaluation.tracking.queries(track_uid, limit=100)`
+The per-query rows a track has accumulated (input/output, metrics, latency), most recent first.
+
+- `client.evaluation.tracking.query(track_uid, trace_id)`
+Drill-down for one query — adds the retrieved contexts, model and token counts.
+
+```python
+with NeuroLinker.from_env() as client:
+    for row in client.evaluation.tracking.queries(track_uid)["queries"]:
+        print(row["user_input"], row["metrics"])
+```
+
 ## End-to-end pipeline
 
-The five modules are designed to compose. The client manually sequences each step — there is no automatic orchestrator.
+The ingestion modules compose end to end — the client manually sequences each step; there is no automatic orchestrator. (Evaluation sits outside this chain: batch scoring via `oneshot`, plus continuous tracking of a live RAG.)
 
 ```python
 from neurolinker_sdk import NeuroLinker, extract_request_uid, extract_document_ids
