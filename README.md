@@ -1,6 +1,6 @@
 # neurolinker-sdk
 
-NeuroLinker is a document intelligence service by Ainexxo S.R.L. that automates the full ingestion pipeline for RAG applications — from PDF extraction to vector-store loading. This SDK is the official Python client for the NeuroLinker API: it provides sync and async clients for the complete pipeline (extraction full and field-based, bucket management, chunking, embedding, and vector-store loading), plus one-shot RAG evaluation with Ragas metrics.
+NeuroLinker is a document intelligence service by Ainexxo S.R.L. that automates the full ingestion pipeline for RAG applications — from PDF extraction to vector-store loading. This SDK is the official Python client for the NeuroLinker API: it provides sync and async clients for the complete pipeline (extraction full and field-based, bucket management, chunking, embedding, and vector-store loading), plus RAG evaluation with Ragas metrics (one-shot batch and continuous tracking).
 
 ## Table of contents
 
@@ -326,6 +326,7 @@ BlockWindowConfig(
 )
 ```
 
+`model_name` (available on all three methods) is the Hugging Face Hub repository id (`org/model`) of the tokenizer used to measure the token budget.
 
 ## Embedding
 
@@ -431,7 +432,7 @@ Conventions worth knowing:
 - `field_name` cannot start with `item_` or `chunk_` — those prefixes are reserved for internal fields. This is the name you reference later as `source` in a `FieldMapping` when loading into a vector store, so keep it stable across runs of the same project.
 - `Content.vectors` is the inner list of vectors to compute for that content block.
 - Internal Ainexxo models use `model_name="ainexxo-..."` and omit `api_key`.
-- External LiteLLM models use the LiteLLM `model_name` as-is and carry their own `api_key` directly on each `EmbeddingVector`.
+- External LiteLLM models use the LiteLLM `model_name` as-is and carry their own `api_key` directly on each `EmbeddingVector`. See the [LiteLLM supported embedding models](https://docs.litellm.ai/docs/embedding/supported_embedding) for valid model names.
 
 ## Vector Store
 
