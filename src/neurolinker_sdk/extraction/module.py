@@ -11,6 +11,9 @@ from .helpers import (
     extract_document_ids as _extract_document_ids,
 )
 from .helpers import (
+    extract_markdown_document_ids as _extract_markdown_document_ids,
+)
+from .helpers import (
     extract_request_uid as _extract_request_uid,
 )
 from .helpers import (
@@ -90,6 +93,21 @@ class ExtractionModule:
             description=description,
         )
 
+    def extract_fields_from_markdown(
+        self,
+        *,
+        json_schema: Dict[str, Any],
+        document_ids: List[str],
+        alias: Optional[str] = None,
+        description: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        return self._extract.extract_fields_from_markdown(
+            json_schema=json_schema,
+            document_ids=document_ids,
+            alias=alias,
+            description=description,
+        )
+
     def generate_schema(self, *, description: str) -> Dict[str, Any]:
         return self._extract.generate_schema(description=description)
 
@@ -120,6 +138,12 @@ class ExtractionModule:
     def extract_document_ids(status_response: Dict[str, Any]) -> List[str]:
         """Return document IDs from a request-status payload."""
         return _extract_document_ids(status_response)
+
+    @staticmethod
+    def extract_markdown_document_ids(submit_response: Dict[str, Any]) -> List[str]:
+        """Return the new ``document_uid``s from an extract-fields-from-markdown
+        submit response's ``document_map`` (used for polling and scalar retrieval)."""
+        return _extract_markdown_document_ids(submit_response)
 
     def wait_for_request(
         self,
@@ -202,6 +226,21 @@ class AsyncExtractionModule:
             description=description,
         )
 
+    async def extract_fields_from_markdown(
+        self,
+        *,
+        json_schema: Dict[str, Any],
+        document_ids: List[str],
+        alias: Optional[str] = None,
+        description: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        return await self._extract.extract_fields_from_markdown(
+            json_schema=json_schema,
+            document_ids=document_ids,
+            alias=alias,
+            description=description,
+        )
+
     async def generate_schema(self, *, description: str) -> Dict[str, Any]:
         return await self._extract.generate_schema(description=description)
 
@@ -232,6 +271,12 @@ class AsyncExtractionModule:
     def extract_document_ids(status_response: Dict[str, Any]) -> List[str]:
         """Return document IDs from a request-status payload."""
         return _extract_document_ids(status_response)
+
+    @staticmethod
+    def extract_markdown_document_ids(submit_response: Dict[str, Any]) -> List[str]:
+        """Return the new ``document_uid``s from an extract-fields-from-markdown
+        submit response's ``document_map`` (used for polling and scalar retrieval)."""
+        return _extract_markdown_document_ids(submit_response)
 
     async def wait_for_request(
         self,

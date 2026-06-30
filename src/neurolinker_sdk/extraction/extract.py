@@ -153,6 +153,42 @@ class ExtractResource:
         _raise_for_status(resp)
         return resp.json()
 
+    def extract_fields_from_markdown(
+        self,
+        *,
+        json_schema: Dict[str, Any],
+        document_ids: List[str],
+        alias: Optional[str] = None,
+        description: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        POST /v1/extract-fields-from-markdown
+
+        Extracts scalar fields from the markdown of already full-extracted
+        documents (no upload). ``document_ids`` are the ``document_uid`` values of
+        completed full-extraction documents. The response carries a
+        ``document_map`` mapping each source ``document_uid`` to a new one — use
+        the new ids for polling (``status.request`` / ``wait_for_request``) and
+        retrieval (``documents.scalars``). See
+        :func:`neurolinker_sdk.extract_markdown_document_ids`. Source documents
+        rejected at submit (not a completed full extraction, not owned, …) are
+        listed in the response's ``skipped``.
+        """
+        if not document_ids:
+            raise NeuroLinkerConfigError("document_ids must be a non-empty list.")
+        _validate_json_schema(json_schema)
+
+        url = _build_url(self._base_url, "/v1/extract-fields-from-markdown")
+        payload: Dict[str, Any] = {"document_ids": document_ids, "json_schema": json_schema}
+        if alias:
+            payload["alias"] = alias
+        if description:
+            payload["description"] = description
+
+        resp = self._client.post(url, json=payload, headers=_json_headers(self._token))
+        _raise_for_status(resp)
+        return resp.json()
+
     def generate_schema(self, *, description: str) -> Dict[str, Any]:
         """
         POST /v1/generate-schema
@@ -251,6 +287,30 @@ class AsyncExtractResource:
         else:
             resp = await self._client.post(url, headers=headers, data=data, files=[])
 
+        _raise_for_status(resp)
+        return resp.json()
+
+    async def extract_fields_from_markdown(
+        self,
+        *,
+        json_schema: Dict[str, Any],
+        document_ids: List[str],
+        alias: Optional[str] = None,
+        description: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Async version of :meth:`ExtractResource.extract_fields_from_markdown`."""
+        if not document_ids:
+            raise NeuroLinkerConfigError("document_ids must be a non-empty list.")
+        _validate_json_schema(json_schema)
+
+        url = _build_url(self._base_url, "/v1/extract-fields-from-markdown")
+        payload: Dict[str, Any] = {"document_ids": document_ids, "json_schema": json_schema}
+        if alias:
+            payload["alias"] = alias
+        if description:
+            payload["description"] = description
+
+        resp = await self._client.post(url, json=payload, headers=_json_headers(self._token))
         _raise_for_status(resp)
         return resp.json()
 

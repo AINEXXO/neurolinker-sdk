@@ -159,6 +159,7 @@ PDF processing — full extraction or schema-based field extraction. The two pip
 |---|---|---|
 | `extraction.extract(...)` | You want the full document content for downstream pipelines (RAG, search, chunking) | Markdown, structured JSON, per-page images, page/section summaries |
 | `extraction.extract_fields(...)` | You only need a structured payload that conforms to a JSON Schema you supply (invoices, forms, contracts) | A JSON object matching your schema, retrievable via `documents.fields(...)` |
+| `extraction.extract_fields_from_markdown(...)` | You already ran full extraction and want scalar fields from a document's markdown (no re-upload) | A JSON object matching your schema per document, retrievable via `documents.scalars(...)` |
 
 Both reserve credits at submit time on a per-page basis (see the platform documentation for pricing).
 
@@ -195,6 +196,20 @@ client.extraction.extract_fields(
 ```
 
 After completion, retrieve the extracted fields via `client.extraction.documents.fields(document_ids)`.
+
+- `client.extraction.extract_fields_from_markdown(json_schema, document_ids, alias=None, description=None)`
+Extract scalar fields from the markdown of **already full-extracted** documents — no re-upload. `document_ids` are the `document_uid` values of completed full-extraction documents; `json_schema` follows the same supported subset as `extract_fields`. The response carries a `document_map` mapping each source `document_uid` to a new one — poll the batch with `wait_for_request(request_uid)` and retrieve the values via `documents.scalars(new_ids)`. Use `extract_markdown_document_ids(submit_response)` to pull the new ids. Example:
+
+```python
+client.extraction.extract_fields_from_markdown(
+    json_schema={
+        "type": "object",
+        "properties": {"invoice_number": {"type": "string"}, "total_amount": {"type": "number"}},
+        "required": ["invoice_number"],
+    },
+    document_ids=["<completed-full-extraction-document_uid>"],
+)
+```
 
 - `client.extraction.generate_schema(description)`
 Generate a JSON Schema from a natural-language description — the returned schema is ready to be passed to `extract_fields`. Example: `description="Extract invoice number, issue date, and total amount from an invoice"`.
