@@ -35,6 +35,24 @@ def extract_document_ids(status_response: Dict[str, Any]) -> List[str]:
     return out
 
 
+def extract_markdown_document_ids(submit_response: Dict[str, Any]) -> List[str]:
+    """Extract the new ``document_uid`` values from an extract-fields-from-markdown
+    submit response's ``document_map`` (each accepted source document is assigned
+    a fresh uid used for polling and scalar retrieval)."""
+    document_map = submit_response.get("document_map")
+    if document_map is None and isinstance(submit_response.get("data"), dict):
+        document_map = submit_response["data"].get("document_map")
+
+    if not isinstance(document_map, list):
+        return []
+
+    out: List[str] = []
+    for item in document_map:
+        if isinstance(item, dict) and isinstance(item.get("document_uid"), str):
+            out.append(item["document_uid"])
+    return out
+
+
 def extract_status(response: Dict[str, Any]) -> Optional[str]:
     """Extract status from a request-status payload."""
     status = response.get("status")

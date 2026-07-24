@@ -112,6 +112,17 @@ class DocumentsResource:
         """
         return self._post("/v1/documents/fields", {"document_ids": document_ids})
 
+    def scalars(self, document_ids: List[str]) -> Dict[str, Any]:
+        """
+        POST /v1/documents/scalars
+
+        Retrieves the extracted scalar fields for documents processed through
+        markdown field extraction. Pass the new ``document_uid`` values from the
+        submit response's ``document_map``. Returns ``content: null`` for
+        documents whose extraction did not complete.
+        """
+        return self._post("/v1/documents/scalars", {"document_ids": document_ids})
+
 
 class AsyncDocumentsResource:
     def __init__(self, base_url: str, token: str, client: httpx.AsyncClient):
@@ -178,3 +189,6 @@ class AsyncDocumentsResource:
 
     async def fields(self, document_ids: List[str]) -> Dict[str, Any]:
         return await self._post("/v1/documents/fields", {"document_ids": document_ids})
+
+    async def scalars(self, document_ids: List[str]) -> Dict[str, Any]:
+        return await self._post("/v1/documents/scalars", {"document_ids": document_ids})

@@ -1,7 +1,7 @@
 [project]
 name = "neurolinker-sdk"
-version = "0.2.0"
-description = "Add your description here"
+version = "0.2.1"
+description = "A Python SDK for the NeuroLinker API from Ainexxo S.R.L."
 readme = "README.md"
 authors = [
     { name = "LeoMarzoli", email = "leo.marzoli@ainexxo.com" },
@@ -11,6 +11,18 @@ requires-python = ">=3.11"
 dependencies = [
     "httpx>=0.28.1",
     "pydantic>=2.12.5",
+]
+
+[project.optional-dependencies]
+# Tracking transport (OpenTelemetry → NeuroLinker ingest) + OpenInference semantic
+# conventions. Install this plus your framework's OpenInference instrumentor —
+# `instrument()` auto-discovers ANY installed instrumentor, e.g.:
+#   pip install neurolinker-sdk[tracking] openinference-instrumentation-langchain
+# For a custom RAG traced manually via record_query(), `[tracking]` alone is enough.
+tracking = [
+    "opentelemetry-sdk>=1.20.0",
+    "opentelemetry-exporter-otlp-proto-http>=1.20.0",
+    "openinference-semantic-conventions>=0.1.0",
 ]
 
 [project.scripts]
@@ -30,6 +42,10 @@ dev = [
     "urllib3>=2.6.3",
     "httpx>=0.28.1",
     "pydantic>=2.12.5",
+    # Tracking extra, so CI exercises the OpenTelemetry emit path + instrument().
+    "opentelemetry-sdk>=1.20.0",
+    "opentelemetry-exporter-otlp-proto-http>=1.20.0",
+    "openinference-semantic-conventions>=0.1.0",
 ]
 
 [tool.ruff]
