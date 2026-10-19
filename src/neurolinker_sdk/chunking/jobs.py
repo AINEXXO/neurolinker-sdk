@@ -3,12 +3,12 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 
 import httpx
-from pydantic import BaseModel, TypeAdapter
+from pydantic import TypeAdapter
 
-from ..validation import normalize_pydantic
 from ..errors import NeuroLinkerConfigError
 from ..http import _build_url, _json_headers, _raise_for_status
 from ..polling import wait_for_terminal_status, wait_for_terminal_status_async
+from ..validation import normalize_pydantic
 from .models import ChunkingConfig
 
 _chunking_adapter: TypeAdapter = TypeAdapter(ChunkingConfig)

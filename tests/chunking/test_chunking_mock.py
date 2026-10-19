@@ -8,7 +8,12 @@ import pytest
 from pydantic import BaseModel
 
 from neurolinker_sdk import AsyncNeuroLinker, NeuroLinker, NeuroLinkerConfigError
-from neurolinker_sdk.chunking import BlockWindowConfig, SectionGreedyConfig
+from neurolinker_sdk.chunking import (
+    ByTitleConfig,
+    FixedSizeConfig,
+    RecursiveConfig,
+    TokenizerConfig,
+)
 
 BUCKET_UID = "bkt_00000000-0000-0000-0000-000000000000"
 JOB_UID = "job_00000000-0000-0000-0000-000000000000"
@@ -36,17 +41,27 @@ def test_create_job_with_pydantic_config_sync() -> None:
         with NeuroLinker(token="nl_dummy", http_client=http_client, timeout_s=1.0) as client:
             resp = client.chunking.jobs.create(
                 bucket_uid=BUCKET_UID,
-                chunking=SectionGreedyConfig(t_min=100, t_max=512, parse_figures=True),
+                chunking=RecursiveConfig(
+                    chunk_size=512,
+                    chunk_overlap=64,
+                    tokenizer=TokenizerConfig(provider="tiktoken", name="cl100k_base"),
+                    parse_figures=True,
+                ),
             )
 
     assert captured["url"].endswith("/v1/chunk/jobs")
     assert captured["body"]["bucket_uid"] == BUCKET_UID
-    assert captured["body"]["chunking"]["method"] == "section_greedy"
-    assert captured["body"]["chunking"]["t_min"] == 100
-    assert captured["body"]["chunking"]["t_max"] == 512
+    assert captured["body"]["chunking"]["method"] == "recursive"
+    assert captured["body"]["chunking"]["chunk_size"] == 512
+    assert captured["body"]["chunking"]["chunk_overlap"] == 64
+    assert captured["body"]["chunking"]["tokenizer"] == {
+        "provider": "tiktoken",
+        "name": "cl100k_base",
+    }
     assert captured["body"]["chunking"]["parse_figures"] is True
     # exclude_none means None fields are dropped
-    assert "model_name" not in captured["body"]["chunking"]
+    assert "parse_tables" not in captured["body"]["chunking"]
+    assert "metadata_request_uid" not in captured["body"]["chunking"]
     assert resp["job_uid"] == JOB_UID
 
 
@@ -66,12 +81,12 @@ def test_create_job_with_dict_sync_validates_discriminator() -> None:
         with NeuroLinker(token="nl_dummy", http_client=http_client, timeout_s=1.0) as client:
             client.chunking.jobs.create(
                 bucket_uid=BUCKET_UID,
-                chunking={"method": "md_header_level", "chunk_at_level": 2},
+                chunking={"method": "markdown_header", "heading_level": 2},
             )
 
     assert captured["body"]["chunking"] == {
-        "method": "md_header_level",
-        "chunk_at_level": 2,
+        "method": "markdown_header",
+        "heading_level": 2,
     }
 
 
@@ -80,7 +95,7 @@ def test_create_job_rejects_invalid_dict_payload() -> None:
         # Missing method
         with pytest.raises(NeuroLinkerConfigError):
             client.chunking.jobs.create(
-                bucket_uid=BUCKET_UID, chunking={"t_max": 512}
+                bucket_uid=BUCKET_UID, chunking={"chunk_size": 512}
             )
         # Unknown method
         with pytest.raises(NeuroLinkerConfigError):
@@ -91,7 +106,18 @@ def test_create_job_rejects_invalid_dict_payload() -> None:
         with pytest.raises(NeuroLinkerConfigError):
             client.chunking.jobs.create(
                 bucket_uid=BUCKET_UID,
-                chunking={"method": "section_greedy", "bogus_field": 1},
+                chunking={"method": "recursive", "bogus_field": 1},
+            )
+        # Removed method
+        with pytest.raises(NeuroLinkerConfigError):
+            client.chunking.jobs.create(
+                bucket_uid=BUCKET_UID, chunking={"method": "section_greedy"}
+            )
+        # Overlap not below chunk size
+        with pytest.raises(NeuroLinkerConfigError):
+            client.chunking.jobs.create(
+                bucket_uid=BUCKET_UID,
+                chunking={"method": "fixed_size", "chunk_size": 64, "chunk_overlap": 64},
             )
         # Non-dict non-model
         with pytest.raises(NeuroLinkerConfigError):
@@ -114,7 +140,7 @@ def test_create_job_rejects_empty_bucket_uid() -> None:
     with NeuroLinker(token="nl_dummy", timeout_s=1.0) as client:
         with pytest.raises(NeuroLinkerConfigError):
             client.chunking.jobs.create(
-                bucket_uid="", chunking=SectionGreedyConfig()
+                bucket_uid="", chunking=ByTitleConfig()
             )
 
 
@@ -137,13 +163,14 @@ async def test_create_job_with_pydantic_config_async() -> None:
         ) as client:
             await client.chunking.jobs.create(
                 bucket_uid=BUCKET_UID,
-                chunking=BlockWindowConfig(
-                    t_max=400, overlap_blocks=1, overlap_mode="within_budget"
-                ),
+                chunking=FixedSizeConfig(chunk_size=400, chunk_overlap=40),
             )
 
-    assert captured["body"]["chunking"]["method"] == "block_window"
-    assert captured["body"]["chunking"]["overlap_mode"] == "within_budget"
+    assert captured["body"]["chunking"] == {
+        "method": "fixed_size",
+        "chunk_size": 400,
+        "chunk_overlap": 40,
+    }
 
 
 # ---------------------------------------------------------------------------

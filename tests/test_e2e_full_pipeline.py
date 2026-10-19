@@ -11,7 +11,7 @@ from neurolinker_sdk import (
     extract_document_ids,
     extract_request_uid,
 )
-from neurolinker_sdk.chunking import SectionGreedyConfig
+from neurolinker_sdk.chunking import ByTitleConfig
 from neurolinker_sdk.embedding import (
     Content,
     EmbeddingVector,
@@ -97,7 +97,7 @@ def test_e2e_full_pipeline_sync() -> None:
             # ----------------------------------------------------------------
             chunk_submit = client.chunking.jobs.create(
                 bucket_uid=bucket_uid,
-                chunking=SectionGreedyConfig(t_min=100, t_max=512),
+                chunking=ByTitleConfig(chunk_size=512, min_chunk_size=100),
             )
             chunk_job_uid = chunk_submit.get("job_uid")
             assert isinstance(chunk_job_uid, str) and chunk_job_uid

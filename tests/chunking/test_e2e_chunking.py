@@ -3,7 +3,7 @@ import os
 import pytest
 
 from neurolinker_sdk import AsyncNeuroLinker, NeuroLinker
-from neurolinker_sdk.chunking import SectionGreedyConfig
+from neurolinker_sdk.chunking import ByTitleConfig
 from neurolinker_sdk.polling import (
     wait_for_terminal_status,
     wait_for_terminal_status_async,
@@ -39,7 +39,7 @@ def test_e2e_chunking_full_flow_sync() -> None:
         # 1) submit
         submit = client.chunking.jobs.create(
             bucket_uid=BUCKET_UID,
-            chunking=SectionGreedyConfig(t_min=100, t_max=512),
+            chunking=ByTitleConfig(chunk_size=512, min_chunk_size=100),
         )
         job_uid = submit.get("job_uid")
         assert isinstance(job_uid, str) and job_uid, f"Missing job_uid in submit response: {submit}"
@@ -82,7 +82,7 @@ async def test_e2e_chunking_full_flow_async() -> None:
     async with AsyncNeuroLinker.from_env() as client:
         submit = await client.chunking.jobs.create(
             bucket_uid=BUCKET_UID,
-            chunking=SectionGreedyConfig(t_min=100, t_max=512),
+            chunking=ByTitleConfig(chunk_size=512, min_chunk_size=100),
         )
         job_uid = submit.get("job_uid")
         assert isinstance(job_uid, str) and job_uid
