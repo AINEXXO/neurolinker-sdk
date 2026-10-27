@@ -1,14 +1,14 @@
 import os
+
 import pytest
+from test_e2e_api_sync import (
+    _assert_documents_results_schema,
+    _extract_document_ids_from_request_status,
+    _extract_request_uid,
+    _wait_for_request_completion,
+)
 
 from neurolinker_sdk import AsyncNeuroLinker
-
-from test_e2e_api_sync import (
-    _extract_request_uid,
-    _extract_document_ids_from_request_status,
-    _wait_for_request_completion,
-    _assert_documents_results_schema,
-)
 
 TOKEN = os.getenv("NEUROLINKER_API_KEY")
 PDF_URL = os.getenv("NEUROLINKER_TEST_PDF_URL")
@@ -23,7 +23,8 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.mark.asyncio
 async def test_documents_summary_endpoints() -> None:
-    async with AsyncNeuroLinker(token=TOKEN, base_url=NEUROLINKER_BASE_URL).from_env(timeout_s=E2E_TIMEOUT_S) as client:
+    nl = AsyncNeuroLinker(token=TOKEN, base_url=NEUROLINKER_BASE_URL)
+    async with nl.from_env(timeout_s=E2E_TIMEOUT_S) as client:
         extract_resp = await client.extraction.extract(
             urls=[PDF_URL],
             alias="sdk-e2e-doc-summaries",

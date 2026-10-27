@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from neurolinker_sdk import NeuroLinker
-
+from neurolinker_sdk.errors import NeuroLinkerAPIError
 
 TOKEN = os.getenv("NEUROLINKER_API_KEY")
 
@@ -91,9 +91,6 @@ def _extract_document_ids_from_request_status(status_response: dict) -> list[str
             doc_ids.append(d["id"])
     return doc_ids
 
-
-import time
-from neurolinker_sdk.errors import NeuroLinkerAPIError
 
 
 def _wait_for_request_completion(client: NeuroLinker, request_uid: str) -> dict:

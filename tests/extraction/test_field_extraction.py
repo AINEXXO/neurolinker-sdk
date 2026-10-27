@@ -368,7 +368,9 @@ def _assert_schema_in_supported_subset(schema: dict, path: str = "$") -> None:
     would mean the LLM produced a schema that ``extract_fields`` would later
     reject — exactly the regression we want to catch.
     """
-    assert isinstance(schema, dict), f"{path}: schema node must be a dict, got {type(schema).__name__}"
+    assert isinstance(schema, dict), (
+        f"{path}: schema node must be a dict, got {type(schema).__name__}"
+    )
 
     node_type = schema.get("type")
     assert isinstance(node_type, str), (
@@ -388,7 +390,8 @@ def _assert_schema_in_supported_subset(schema: dict, path: str = "$") -> None:
         allowed = common
     extras = set(schema.keys()) - allowed
     assert not extras, (
-        f"{path}: unsupported keywords {sorted(extras)} for type {node_type!r}; allowed: {sorted(allowed)}"
+        f"{path}: unsupported keywords {sorted(extras)} for type {node_type!r}; "
+        f"allowed: {sorted(allowed)}"
     )
 
     if node_type == "object":
@@ -440,7 +443,9 @@ async def test_generate_schema_e2e_async() -> None:
     assert isinstance(schema, dict), f"json_schema must be a dict, got {type(schema).__name__}"
 
     # Root must be 'object' with non-empty properties — strict subset check.
-    assert schema.get("type") == "object", f"root schema must be type 'object', got {schema.get('type')!r}"
+    assert schema.get("type") == "object", (
+        f"root schema must be type 'object', got {schema.get('type')!r}"
+    )
     properties = schema.get("properties")
     assert isinstance(properties, dict) and properties, (
         f"json_schema must have a non-empty 'properties' mapping, got: {schema}"

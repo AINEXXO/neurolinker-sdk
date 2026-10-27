@@ -4,8 +4,8 @@ from typing import Any, Dict, Union
 
 import httpx
 
-from ..validation import normalize_pydantic
 from ..http import _build_url, _json_headers, _raise_for_status
+from ..validation import normalize_pydantic
 from .models import CollectionSchema, VectorDBConfig
 
 

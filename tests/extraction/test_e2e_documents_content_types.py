@@ -1,20 +1,24 @@
 import os
 
 import pytest
-
-from neurolinker_sdk import AsyncNeuroLinker, ContentType, NeuroLinker
-
+from test_e2e_api_async import (
+    _extract_document_ids_from_request_status,
+)
 from test_e2e_api_async import (
     _extract_request_uid as _extract_request_uid_async,
-    _extract_document_ids_from_request_status,
+)
+from test_e2e_api_async import (
     _wait_for_request_completion as _wait_for_request_completion_async,
 )
+from test_e2e_api_sync import _assert_documents_results_schema
 from test_e2e_api_sync_local import (
     _extract_request_uid as _extract_request_uid_sync,
+)
+from test_e2e_api_sync_local import (
     _wait_for_request_completion as _wait_for_request_completion_sync,
 )
-from test_e2e_api_sync import _assert_documents_results_schema
 
+from neurolinker_sdk import AsyncNeuroLinker, ContentType, NeuroLinker
 
 TOKEN = os.getenv("NEUROLINKER_API_KEY")
 PDF_URL = os.getenv("NEUROLINKER_TEST_PDF_URL")

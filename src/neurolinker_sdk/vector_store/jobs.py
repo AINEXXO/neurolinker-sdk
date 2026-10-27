@@ -4,10 +4,10 @@ from typing import Any, Dict, List, Optional, Union
 
 import httpx
 
-from ..validation import normalize_pydantic, normalize_pydantic_list
 from ..errors import NeuroLinkerConfigError
 from ..http import _build_url, _json_headers, _raise_for_status
 from ..polling import wait_for_terminal_status, wait_for_terminal_status_async
+from ..validation import normalize_pydantic, normalize_pydantic_list
 from .models import FieldMapping, VectorDBConfig
 
 _TERMINAL_STATES = frozenset({"completed", "failed"})
@@ -100,7 +100,8 @@ class JobsResource:
         poll_interval_s: Optional[float] = None,
         poll_max_interval_s: Optional[float] = None,
     ) -> Dict[str, Any]:
-        """Poll ``/v1/vector-store/jobs/{bucket_uid}/{job_uid}`` until a terminal state or timeout."""
+        """Poll ``/v1/vector-store/jobs/{bucket_uid}/{job_uid}`` until a terminal state or
+        timeout."""
         return wait_for_terminal_status(
             fetch_status=lambda: self.get(bucket_uid, job_uid),
             extract_status=lambda r: r.get("status"),

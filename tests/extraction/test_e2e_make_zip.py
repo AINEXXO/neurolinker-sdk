@@ -1,17 +1,23 @@
 import os
+
 import pytest
-
-from neurolinker_sdk import AsyncNeuroLinker, NeuroLinker
-
+from test_e2e_api_async import (
+    _extract_document_ids_from_request_status,
+)
 from test_e2e_api_async import (
     _extract_request_uid as _extract_request_uid_async,
-    _extract_document_ids_from_request_status,
+)
+from test_e2e_api_async import (
     _wait_for_request_completion as _wait_for_request_completion_async,
 )
 from test_e2e_api_sync_local import (
     _extract_request_uid as _extract_request_uid_sync,
+)
+from test_e2e_api_sync_local import (
     _wait_for_request_completion as _wait_for_request_completion_sync,
 )
+
+from neurolinker_sdk import AsyncNeuroLinker, NeuroLinker
 
 TOKEN = os.getenv("NEUROLINKER_API_KEY")
 PDF_URL = os.getenv("NEUROLINKER_TEST_PDF_URL")
@@ -34,7 +40,8 @@ async def test_make_zip_async() -> None:
       3) call make-zip for the whole job
       4) call make-zip for a single document
     """
-    async with AsyncNeuroLinker(token=TOKEN, base_url=NEUROLINKER_BASE_URL).from_env(timeout_s=E2E_TIMEOUT_S) as client:
+    nl = AsyncNeuroLinker(token=TOKEN, base_url=NEUROLINKER_BASE_URL)
+    async with nl.from_env(timeout_s=E2E_TIMEOUT_S) as client:
         # 1) Submit extract request
         extract_resp = await client.extraction.extract(
             urls=[PDF_URL],

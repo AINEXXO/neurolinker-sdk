@@ -1,8 +1,8 @@
 import os
+
 import pytest
 
 from neurolinker_sdk import NeuroLinker
-
 
 TOKEN = os.getenv("NEUROLINKER_API_KEY")
 
