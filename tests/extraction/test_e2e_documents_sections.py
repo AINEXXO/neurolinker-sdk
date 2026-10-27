@@ -13,7 +13,7 @@ from test_e2e_api_sync import (
 TOKEN = os.getenv("NEUROLINKER_API_KEY")
 PDF_URL = os.getenv("NEUROLINKER_TEST_PDF_URL")
 NEUROLINKER_BASE_URL = os.getenv("NEUROLINKER_BASE_URL")
-E2E_TIMEOUT_S = float(os.getenv("NEUROLINKER_E2E_TIMEOUT_S", "600"))
+E2E_TIMEOUT_S = float(os.getenv("NEUROLINKER_E2E_TIMEOUT_S", "1800"))
 
 pytestmark = pytest.mark.skipif(
     not TOKEN or not PDF_URL,

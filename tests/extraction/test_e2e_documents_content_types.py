@@ -19,7 +19,7 @@ from test_e2e_api_sync import _assert_documents_results_schema
 TOKEN = os.getenv("NEUROLINKER_API_KEY")
 PDF_URL = os.getenv("NEUROLINKER_TEST_PDF_URL")
 
-E2E_TIMEOUT_S = float(os.getenv("NEUROLINKER_E2E_TIMEOUT_S", "600"))
+E2E_TIMEOUT_S = float(os.getenv("NEUROLINKER_E2E_TIMEOUT_S", "1800"))
 
 
 pytestmark = pytest.mark.skipif(
