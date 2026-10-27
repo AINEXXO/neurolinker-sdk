@@ -179,3 +179,71 @@ async def test_queries_async() -> None:
 
     assert captured["url"].endswith(f"/v1/eval/tracks/{TRACK_UID}/queries?limit=10")
     assert resp["queries"] == []
+
+
+# ---------------------------------------------------------------------------
+# scope + retrievals
+# ---------------------------------------------------------------------------
+
+SPAN_ID = "b7ad6b7169203331"
+
+
+def _capturing_client(response_json):
+    captured: dict[str, object] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["method"] = request.method
+        captured["url"] = str(request.url)
+        captured["body"] = request.content.decode()
+        return httpx.Response(200, json=response_json, request=request)
+
+    return captured, httpx.MockTransport(handler)
+
+
+def test_create_track_with_scope_sync() -> None:
+    captured, transport = _capturing_client({"track_uid": TRACK_UID, "scope": "retrievals_only"})
+    with httpx.Client(transport=transport) as http_client:
+        with NeuroLinker(token="nl_dummy", http_client=http_client, timeout_s=1.0) as client:
+            client.evaluation.tracking.tracks.create(name="agent", scope="retrievals_only")
+    assert json.loads(captured["body"]) == {"name": "agent", "scope": "retrievals_only"}
+
+
+def test_set_scope_sync() -> None:
+    captured, transport = _capturing_client({"track_uid": TRACK_UID, "scope": "retrievals_only"})
+    with httpx.Client(transport=transport) as http_client:
+        with NeuroLinker(token="nl_dummy", http_client=http_client, timeout_s=1.0) as client:
+            resp = client.evaluation.tracking.tracks.set_scope(TRACK_UID, scope="retrievals_only")
+    assert captured["method"] == "PATCH"
+    assert captured["url"].endswith(f"/v1/eval/tracks/{TRACK_UID}")
+    assert json.loads(captured["body"]) == {"scope": "retrievals_only"}
+    assert resp["scope"] == "retrievals_only"
+
+
+def test_retrievals_list_and_get_sync() -> None:
+    captured, transport = _capturing_client({"track_uid": TRACK_UID, "retrievals": []})
+    with httpx.Client(transport=transport) as http_client:
+        with NeuroLinker(token="nl_dummy", http_client=http_client, timeout_s=1.0) as client:
+            client.evaluation.tracking.retrievals(TRACK_UID, limit=20)
+            assert captured["method"] == "GET"
+            assert captured["url"].endswith(f"/v1/eval/tracks/{TRACK_UID}/retrievals?limit=20")
+            client.evaluation.tracking.retrieval(TRACK_UID, SPAN_ID)
+            assert captured["url"].endswith(f"/v1/eval/tracks/{TRACK_UID}/retrievals/{SPAN_ID}")
+
+
+def test_retrieval_requires_span_id() -> None:
+    with NeuroLinker(token="nl_dummy", timeout_s=1.0) as client:
+        with pytest.raises(NeuroLinkerConfigError):
+            client.evaluation.tracking.retrieval(TRACK_UID, "")
+
+
+@pytest.mark.asyncio
+async def test_retrievals_and_set_scope_async() -> None:
+    captured, transport = _capturing_client({"track_uid": TRACK_UID, "retrievals": []})
+    async with httpx.AsyncClient(transport=transport) as http_client:
+        async with AsyncNeuroLinker(
+            token="nl_dummy", http_client=http_client, timeout_s=1.0
+        ) as client:
+            await client.evaluation.tracking.retrieval(TRACK_UID, SPAN_ID)
+            assert captured["url"].endswith(f"/retrievals/{SPAN_ID}")
+            await client.evaluation.tracking.tracks.set_scope(TRACK_UID, scope="retrievals_only")
+            assert json.loads(captured["body"]) == {"scope": "retrievals_only"}

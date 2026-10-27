@@ -688,9 +688,31 @@ with record_query(user_input=question) as q:
     )
 ```
 
+**Searches your framework does not trace (`@retriever`).** Every search is also scored on its own: the query against the documents it returned (`context_relevance` for the set, plus a relevance per document). Framework retrievers (LangChain, LlamaIndex, ...) emit these spans automatically. When your code calls the vector DB directly, or the search runs in a separate service such as an MCP server, decorate the function that runs it, in the process that runs it:
+
+```python
+from neurolinker_sdk import RetrievedDocument, instrument, retriever
+
+instrument(track_uid="<track_uid>", manual=True)   # once, in THIS process
+
+@retriever(to_documents=lambda hits: [
+    RetrievedDocument(content=h["entity"]["text"], id=h["id"], score=h["distance"])
+    for h in hits[0]
+])
+def vector_search(query: str, top_k: int = 10):
+    return milvus.search("manuals", data=[embed(query)], limit=top_k, output_fields=["text"])
+```
+
+- `to_documents` maps your search result to strings or `RetrievedDocument`s; without it, the function must already return strings. Your function's return value is passed through unchanged, and tracing never breaks the search.
+- The query is the parameter named `query`, else the first one; pass `query_arg="..."` otherwise.
+- Works on sync and async functions. Standalone, each call is its own trace (scored as a search). Inside `record_query(...)`, the span is also that query's context.
+- No trace-context propagation is needed for search scores: the span carries both the query and the documents.
+
+**Scope.** A track scores both levels by default (`scope="queries_and_retrievals"`). For a system whose root span is not a question and answer, such as an agent that automates a workflow and searches a knowledge base along the way, score searches only: `tracks.create(name=..., scope="retrievals_only")` or `tracks.set_scope(track_uid, scope="retrievals_only")`.
+
 **Read the dashboard.**
 
-- `client.evaluation.tracking.tracks.create(name=...)` / `.list()` / `.set_active(track_uid, active=...)`
+- `client.evaluation.tracking.tracks.create(name=..., scope=...)` / `.list()` / `.set_active(track_uid, active=...)` / `.set_scope(track_uid, scope=...)`
 Manage tracks. A disabled track stops accepting traces; its history stays readable.
 
 - `client.evaluation.tracking.queries(track_uid, limit=100)`
@@ -698,6 +720,9 @@ The per-query rows a track has accumulated (input/output, metrics, latency), mos
 
 - `client.evaluation.tracking.query(track_uid, trace_id)`
 Drill-down for one query — adds the retrieved contexts, model and token counts.
+
+- `client.evaluation.tracking.retrievals(track_uid, limit=100)` / `.retrieval(track_uid, span_id)`
+The per-search rows (query, document count, `context_relevance`, `relevant_document_ratio`, latency), most recent first; the drill-down adds each judged document with its relevance.
 
 ```python
 with NeuroLinker.from_env() as client:
