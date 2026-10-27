@@ -64,7 +64,16 @@ def test_create_job_with_dict_payload_sync() -> None:
 
     def handler(request: httpx.Request) -> httpx.Response:
         captured["body"] = json.loads(request.content.decode("utf-8"))
-        return httpx.Response(200, json={"success": True, "job_uid": JOB_UID, "status": "pending", "bucket_uid": BUCKET_UID}, request=request)
+        return httpx.Response(
+            200,
+            json={
+                "success": True,
+                "job_uid": JOB_UID,
+                "status": "pending",
+                "bucket_uid": BUCKET_UID,
+            },
+            request=request,
+        )
 
     with httpx.Client(transport=httpx.MockTransport(handler)) as http_client:
         with NeuroLinker(token="nl_dummy", http_client=http_client, timeout_s=1.0) as client:
@@ -93,7 +102,16 @@ def test_create_job_with_multi_vector_sync() -> None:
 
     def handler(request: httpx.Request) -> httpx.Response:
         captured["body"] = json.loads(request.content.decode("utf-8"))
-        return httpx.Response(200, json={"success": True, "job_uid": JOB_UID, "status": "pending", "bucket_uid": BUCKET_UID}, request=request)
+        return httpx.Response(
+            200,
+            json={
+                "success": True,
+                "job_uid": JOB_UID,
+                "status": "pending",
+                "bucket_uid": BUCKET_UID,
+            },
+            request=request,
+        )
 
     with httpx.Client(transport=httpx.MockTransport(handler)) as http_client:
         with NeuroLinker(token="nl_dummy", http_client=http_client, timeout_s=1.0) as client:
@@ -182,7 +200,16 @@ async def test_create_job_with_multi_modal_async() -> None:
 
     def handler(request: httpx.Request) -> httpx.Response:
         captured["body"] = json.loads(request.content.decode("utf-8"))
-        return httpx.Response(200, json={"success": True, "job_uid": JOB_UID, "status": "pending", "bucket_uid": BUCKET_UID}, request=request)
+        return httpx.Response(
+            200,
+            json={
+                "success": True,
+                "job_uid": JOB_UID,
+                "status": "pending",
+                "bucket_uid": BUCKET_UID,
+            },
+            request=request,
+        )
 
     embeddings = [
         Content(
@@ -216,7 +243,9 @@ async def test_create_job_with_multi_modal_async() -> None:
     ]
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http_client:
-        async with AsyncNeuroLinker(token="nl_dummy", http_client=http_client, timeout_s=1.0) as client:
+        async with AsyncNeuroLinker(
+            token="nl_dummy", http_client=http_client, timeout_s=1.0
+        ) as client:
             await client.embedding.jobs.create(bucket_uid=BUCKET_UID, embeddings=embeddings)
 
     body_embeddings = captured["body"]["embeddings"]
@@ -231,7 +260,16 @@ def test_get_job_sync() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         captured["method"] = request.method
         captured["url"] = str(request.url)
-        return httpx.Response(200, json={"success": True, "job_uid": JOB_UID, "status": "completed", "bucket_uid": BUCKET_UID}, request=request)
+        return httpx.Response(
+            200,
+            json={
+                "success": True,
+                "job_uid": JOB_UID,
+                "status": "completed",
+                "bucket_uid": BUCKET_UID,
+            },
+            request=request,
+        )
 
     with httpx.Client(transport=httpx.MockTransport(handler)) as http_client:
         with NeuroLinker(token="nl_dummy", http_client=http_client, timeout_s=1.0) as client:

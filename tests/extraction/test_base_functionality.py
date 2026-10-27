@@ -1,6 +1,5 @@
 import os
 
-import httpx
 import pytest
 
 from neurolinker_sdk import AsyncNeuroLinker

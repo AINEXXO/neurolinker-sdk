@@ -28,7 +28,8 @@ class EmbeddingVector(BaseModel):
         for reserved in _RESERVED_VECTOR_PREFIXES:
             if v.startswith(reserved):
                 raise ValueError(
-                    f"field_name cannot start with '{reserved}' — reserved namespace for internal fields. Got: '{v}'"
+                    f"field_name cannot start with '{reserved}' — reserved namespace for internal "
+                    f"fields. Got: '{v}'"
                 )
         return v
 
@@ -50,7 +51,8 @@ class Content(BaseModel):
             invalid_list = ", ".join(invalid)
             allowed_list = ", ".join(sorted(allowed))
             raise ValueError(
-                f"Invalid inputs for content_type '{self.content_type}': {invalid_list}. Allowed inputs: {allowed_list}"
+                f"Invalid inputs for content_type '{self.content_type}': {invalid_list}. "
+                f"Allowed inputs: {allowed_list}"
             )
         return self
 

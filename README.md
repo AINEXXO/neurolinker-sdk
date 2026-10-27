@@ -290,7 +290,7 @@ Attach extraction request UIDs (and optionally specific document UIDs) to a buck
 Chunking jobs over a bucket.
 
 - `client.chunking.jobs.create(bucket_uid, chunking=...)`
-Submit a chunking job. Pass an instance of one of the three chunking configs — `SectionGreedyConfig`, `MdHeaderLevelConfig`, or `BlockWindowConfig` — described below.
+Submit a chunking job. Pass an instance of one of the five chunking configs (`RecursiveConfig`, `FixedSizeConfig`, `SentenceConfig`, `MarkdownHeaderConfig`, `ByTitleConfig`) described below.
 
 - `client.chunking.jobs.get(bucket_uid, job_uid)`
 Retrieve the current state of a chunking job.
@@ -306,42 +306,55 @@ Fetch the chunking output files for a bucket. Returns a `dict[filename, bytes]`.
 
 ### Choosing a chunking strategy
 
-Three strategies are available — pick based on your document structure:
+Five strategies are available. Pick based on your documents and queries:
 
 | Strategy | Best for | What it does |
 |---|---|---|
-| `SectionGreedyConfig` | Well-structured documents (papers, reports, manuals). **Recommended default.** | Respects natural section boundaries and packs each chunk to a token budget (`t_min`–`t_max`) |
-| `MdHeaderLevelConfig` | FAQ-style or hierarchical knowledge bases where chunks should map 1:1 to headings | Splits at heading boundaries up to `chunk_at_level` |
-| `BlockWindowConfig` | Unstructured or continuous text (transcripts, plain narratives) where natural boundaries don't help | Sliding window over blocks with configurable overlap |
+| `RecursiveConfig` | Most documents. **General-purpose default.** | Splits on the largest natural boundary that fits (paragraph, line, sentence, word) and packs the pieces up to `chunk_size` tokens, with `chunk_overlap` tokens of whole sentences repeated between chunks |
+| `FixedSizeConfig` | Uniform chunk sizes, benchmarking, unstructured text | Windows of exactly `chunk_size` tokens with `chunk_overlap` tokens of overlap, cut anywhere in the text |
+| `SentenceConfig` | Prose, Q&A, legal and narrative text where a cut sentence loses meaning | Packs whole sentences up to `chunk_size` tokens, with whole-sentence overlap |
+| `MarkdownHeaderConfig` | FAQ-style or hierarchical knowledge bases where chunks should map 1:1 to headings | One chunk per section at `heading_level`; deeper sections stay with their parent, oversized sections are split to fit `chunk_size` |
+| `ByTitleConfig` | Well-structured documents (manuals, reports, papers) | A new chunk at every heading; short sections are combined while the chunk is below `min_chunk_size` |
 
+In every strategy figures and tables are kept whole (a figure or table larger than `chunk_size` becomes its own chunk) and are never repeated as overlap.
 
 Example configurations:
 
 ```python
 from neurolinker_sdk.chunking import (
-    BlockWindowConfig, MdHeaderLevelConfig, SectionGreedyConfig,
+    ByTitleConfig, FixedSizeConfig, MarkdownHeaderConfig, RecursiveConfig,
+    SentenceConfig, TokenizerConfig,
 )
 
-# (1) Structure-aware: respects natural sections, packs each chunk to a token budget.
-SectionGreedyConfig(
-    t_min=200, t_max=1500,                       # token budget per chunk
-    model_name="Alibaba-NLP/gte-large-en-v1.5",  # tokenizer used for the budget
+# (1) General-purpose default.
+RecursiveConfig(
+    chunk_size=512, chunk_overlap=64,                          # tokens
+    tokenizer=TokenizerConfig(provider="huggingface", name="BAAI/bge-m3"),
     parse_figures=True, parse_tables=True,
     parse_headers=True, parse_footers=False,
 )
 
-# (2) Markdown-header-aware: splits at headings up to a given level.
-MdHeaderLevelConfig(chunk_at_level=2)
-
-# (3) Sliding window over blocks with configurable overlap.
-BlockWindowConfig(
-    t_max=1000,
-    overlap_blocks=2,
-    overlap_mode="within_budget",  # or "extra_budget"
+# (2) Exact token windows, here measured with the OpenAI tokenizer.
+FixedSizeConfig(
+    chunk_size=400, chunk_overlap=40,
+    tokenizer=TokenizerConfig(provider="tiktoken", name="cl100k_base"),
 )
+
+# (3) Whole sentences only.
+SentenceConfig(chunk_size=384, chunk_overlap=48)
+
+# (4) One chunk per "##" section.
+MarkdownHeaderConfig(heading_level=2, chunk_size=1024)
+
+# (5) A chunk per section, combining sections shorter than 128 tokens.
+ByTitleConfig(chunk_size=1024, min_chunk_size=128)
 ```
 
-`model_name` (available on all three methods) is the Hugging Face Hub repository id (`org/model`) of the tokenizer used to measure the token budget.
+Defaults when a field is omitted: `chunk_size=512`, `chunk_overlap=64`, `min_chunk_size=128`, `heading_level=2`. With a custom `chunk_size`, an omitted `chunk_overlap` defaults to `chunk_size // 8` and an omitted `min_chunk_size` to `chunk_size // 4` (capped at the defaults above). `chunk_size` ranges from 16 to 8192, and `chunk_overlap` / `min_chunk_size` must stay below it.
+
+`tokenizer` (available on all five methods) measures `chunk_size` and overlap; match it to the embedding model you will use. `provider="huggingface"` takes any public Hugging Face Hub repository id (`org/model`, default `BAAI/bge-m3`, the tokenizer of `ainexxo-bge-m3`); `provider="tiktoken"` takes an OpenAI encoding, `cl100k_base` (`text-embedding-3-*`, `text-embedding-ada-002`) or `o200k_base`. A Hugging Face repository that is missing, private or gated is rejected when the job is submitted.
+
+`metadata_request_uid` (optional, all methods) names a markdown field extraction run on the bucket whose per-document fields the vector load joins on every record.
 
 ## Embedding
 
@@ -688,9 +701,31 @@ with record_query(user_input=question) as q:
     )
 ```
 
+**Searches your framework does not trace (`@retriever`).** Every search is also scored on its own: the query against the documents it returned (`context_relevance` for the set, plus a relevance per document). Framework retrievers (LangChain, LlamaIndex, ...) emit these spans automatically. When your code calls the vector DB directly, or the search runs in a separate service such as an MCP server, decorate the function that runs it, in the process that runs it:
+
+```python
+from neurolinker_sdk import RetrievedDocument, instrument, retriever
+
+instrument(track_uid="<track_uid>", manual=True)   # once, in THIS process
+
+@retriever(to_documents=lambda hits: [
+    RetrievedDocument(content=h["entity"]["text"], id=h["id"], score=h["distance"])
+    for h in hits[0]
+])
+def vector_search(query: str, top_k: int = 10):
+    return milvus.search("manuals", data=[embed(query)], limit=top_k, output_fields=["text"])
+```
+
+- `to_documents` maps your search result to strings or `RetrievedDocument`s; without it, the function must already return strings. Your function's return value is passed through unchanged, and tracing never breaks the search.
+- The query is the parameter named `query`, else the first one; pass `query_arg="..."` otherwise.
+- Works on sync and async functions. Standalone, each call is its own trace (scored as a search). Inside `record_query(...)`, the span is also that query's context.
+- No trace-context propagation is needed for search scores: the span carries both the query and the documents.
+
+**Scope.** A track scores both levels by default (`scope="queries_and_retrievals"`). For a system whose root span is not a question and answer, such as an agent that automates a workflow and searches a knowledge base along the way, score searches only: `tracks.create(name=..., scope="retrievals_only")` or `tracks.set_scope(track_uid, scope="retrievals_only")`.
+
 **Read the dashboard.**
 
-- `client.evaluation.tracking.tracks.create(name=...)` / `.list()` / `.set_active(track_uid, active=...)`
+- `client.evaluation.tracking.tracks.create(name=..., scope=...)` / `.list()` / `.set_active(track_uid, active=...)` / `.set_scope(track_uid, scope=...)`
 Manage tracks. A disabled track stops accepting traces; its history stays readable.
 
 - `client.evaluation.tracking.queries(track_uid, limit=100)`
@@ -698,6 +733,9 @@ The per-query rows a track has accumulated (input/output, metrics, latency), mos
 
 - `client.evaluation.tracking.query(track_uid, trace_id)`
 Drill-down for one query — adds the retrieved contexts, model and token counts.
+
+- `client.evaluation.tracking.retrievals(track_uid, limit=100)` / `.retrieval(track_uid, span_id)`
+The per-search rows (query, document count, `context_relevance`, `relevant_document_ratio`, latency), most recent first; the drill-down adds each judged document with its relevance.
 
 ```python
 with NeuroLinker.from_env() as client:
@@ -711,7 +749,7 @@ The ingestion modules compose end to end — the client manually sequences each 
 
 ```python
 from neurolinker_sdk import NeuroLinker, extract_request_uid, extract_document_ids
-from neurolinker_sdk.chunking import SectionGreedyConfig
+from neurolinker_sdk.chunking import RecursiveConfig
 from neurolinker_sdk.embedding import Content, EmbeddingVector
 from neurolinker_sdk.vector_store import CollectionSchema, FieldDef, FieldMapping, VectorDBConfig
 
@@ -732,7 +770,7 @@ with NeuroLinker.from_env() as client:
     # 3. Chunk
     chunk_job = client.chunking.jobs.create(
         bucket_uid=bucket_uid,
-        chunking=SectionGreedyConfig(t_min=100, t_max=512),
+        chunking=RecursiveConfig(chunk_size=512, chunk_overlap=64),
     )
     client.chunking.jobs.wait(bucket_uid, chunk_job["job_uid"])
 

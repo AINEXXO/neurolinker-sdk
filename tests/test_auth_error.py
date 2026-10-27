@@ -1,4 +1,5 @@
 import pytest
+
 from neurolinker_sdk import NeuroLinker, NeuroLinkerAPIError
 
 

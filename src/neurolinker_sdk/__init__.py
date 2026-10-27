@@ -1,6 +1,6 @@
 from .client import AsyncNeuroLinker, NeuroLinker
 from .errors import NeuroLinkerAPIError, NeuroLinkerConfigError
-from .evaluation.tracking import instrument, record_query
+from .evaluation.tracking import RetrievedDocument, instrument, record_query, retriever
 from .extraction.documents import ContentType, SummaryType
 from .extraction.helpers import (
     extract_document_ids,
@@ -20,4 +20,6 @@ __all__ = [
     "extract_markdown_document_ids",
     "instrument",
     "record_query",
+    "retriever",
+    "RetrievedDocument",
 ]

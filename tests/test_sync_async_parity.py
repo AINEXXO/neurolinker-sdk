@@ -81,7 +81,9 @@ def test_shared_methods_have_matching_signatures() -> None:
     }
     assert not mismatched, (
         "Sync and async clients have methods with diverging signatures:\n"
-        + "\n".join(f"  {n}:\n    sync : {s}\n    async: {a}" for n, (s, a) in sorted(mismatched.items()))
+        + "\n".join(
+            f"  {n}:\n    sync : {s}\n    async: {a}" for n, (s, a) in sorted(mismatched.items())
+        )
     )
 
 

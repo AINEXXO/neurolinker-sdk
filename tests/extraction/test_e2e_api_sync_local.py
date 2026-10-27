@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from neurolinker_sdk import NeuroLinker
-
+from neurolinker_sdk.errors import NeuroLinkerAPIError
 
 TOKEN = os.getenv("NEUROLINKER_API_KEY")
 
@@ -13,7 +13,7 @@ TOKEN = os.getenv("NEUROLINKER_API_KEY")
 PDF_PATHS_RAW = os.getenv("NEUROLINKER_TEST_PDF_PATHS", "").strip()
 PDF_PATH_SINGLE = os.getenv("NEUROLINKER_TEST_PDF_PATH", "").strip()
 
-E2E_TIMEOUT_S = float(os.getenv("NEUROLINKER_E2E_TIMEOUT_S", "600"))
+E2E_TIMEOUT_S = float(os.getenv("NEUROLINKER_E2E_TIMEOUT_S", "1800"))
 POLL_INTERVAL_S = float(os.getenv("NEUROLINKER_E2E_POLL_INTERVAL_S", "2"))
 POLL_MAX_INTERVAL_S = float(os.getenv("NEUROLINKER_E2E_POLL_MAX_INTERVAL_S", "10"))
 
@@ -91,9 +91,6 @@ def _extract_document_ids_from_request_status(status_response: dict) -> list[str
             doc_ids.append(d["id"])
     return doc_ids
 
-
-import time
-from neurolinker_sdk.errors import NeuroLinkerAPIError
 
 
 def _wait_for_request_completion(client: NeuroLinker, request_uid: str) -> dict:

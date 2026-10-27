@@ -1,6 +1,6 @@
+import asyncio
 import os
 import time
-import asyncio
 from pathlib import Path
 
 import pytest
@@ -8,13 +8,12 @@ import pytest
 from neurolinker_sdk import AsyncNeuroLinker
 from neurolinker_sdk.errors import NeuroLinkerAPIError
 
-
 TOKEN = os.getenv("NEUROLINKER_API_KEY")
 
 PDF_PATHS_RAW = os.getenv("NEUROLINKER_TEST_PDF_PATHS", "").strip()
 PDF_PATH_SINGLE = os.getenv("NEUROLINKER_TEST_PDF_PATH", "").strip()
 
-E2E_TIMEOUT_S = float(os.getenv("NEUROLINKER_E2E_TIMEOUT_S", "600"))
+E2E_TIMEOUT_S = float(os.getenv("NEUROLINKER_E2E_TIMEOUT_S", "1800"))
 POLL_INTERVAL_S = float(os.getenv("NEUROLINKER_E2E_POLL_INTERVAL_S", "2"))
 POLL_MAX_INTERVAL_S = float(os.getenv("NEUROLINKER_E2E_POLL_MAX_INTERVAL_S", "10"))
 

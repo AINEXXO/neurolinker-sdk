@@ -1,4 +1,5 @@
 import pytest
+
 from neurolinker_sdk.config import (
     DEFAULT_BASE_URL,
     DEFAULT_POLL_INTERVAL_S,
