@@ -7,11 +7,10 @@ from typing import Any, Optional, Sequence
 
 from ...config import DEFAULT_BASE_URL
 from ...errors import NeuroLinkerConfigError
+from . import _tracing
 
 _TRACK_UID_HEADER = "neurolinker-track-uid"
 _INGEST_PATH = "/v1/eval/ingest/v1/traces"
-
-_instrumented = False
 
 
 def instrument(
@@ -32,14 +31,35 @@ def instrument(
     (silences the "no instrumentor found" warning); ``frameworks`` restricts which
     instrumentors to activate.
 
+    NeuroLinker gets a tracer provider of its own: only the OpenInference
+    instrumentors' spans and the SDK's own (:func:`record_query`,
+    :func:`retriever`) are sent to NeuroLinker. The process-wide provider, and
+    with it any OpenTelemetry setup the app already has, is left untouched, so
+    the app's own spans (HTTP, database) never reach NeuroLinker.
+
     Requires the tracking extra + your framework's OpenInference instrumentor
     (e.g. ``pip install neurolinker-sdk[tracking] openinference-instrumentation-langchain``;
     any OpenInference instrumentor is auto-discovered).
-    Returns the OpenTelemetry ``TracerProvider`` — call ``provider.force_flush()``
-    before a short-lived script exits. See the README for coexistence with an
-    existing OpenTelemetry setup and pre-forking servers.
+
+    Args:
+        track_uid: The track that receives the traces.
+        api_key: NeuroLinker API key. Default: ``NEUROLINKER_API_KEY``.
+        base_url: NeuroLinker API base URL. Default: ``NEUROLINKER_BASE_URL``,
+            else the public API.
+        frameworks: Entry-point names of the instrumentors to activate. Default:
+            every installed one; ``[]`` activates none.
+        manual: The app traces itself with :func:`record_query` /
+            :func:`retriever`; silences the "no instrumentor found" warning.
+
+    Returns:
+        NeuroLinker's OpenTelemetry ``TracerProvider``: call
+        ``provider.force_flush()`` before a short-lived script exits. A repeat
+        call returns the same provider and changes nothing.
+
+    Raises:
+        NeuroLinkerConfigError: ``track_uid`` or the API key is missing, or the
+            tracking extra is not installed.
     """
-    global _instrumented
     if not track_uid:
         raise NeuroLinkerConfigError("track_uid must be a non-empty string.")
 
@@ -51,9 +71,7 @@ def instrument(
     url = (base_url or os.getenv("NEUROLINKER_BASE_URL") or DEFAULT_BASE_URL).rstrip("/")
 
     try:
-        from opentelemetry import trace
         from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-        from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.export import BatchSpanProcessor
     except ImportError as exc:
         raise NeuroLinkerConfigError(
@@ -62,34 +80,30 @@ def instrument(
             "`pip install neurolinker-sdk[tracking] openinference-instrumentation-langchain`."
         ) from exc
 
-    if _instrumented:
+    existing = _tracing.provider()
+    if existing is not None:
         warnings.warn(
             "neurolinker: instrument() was already called in this process — "
             "ignoring the repeat call.",
             stacklevel=2,
         )
-        return trace.get_tracer_provider()
+        return existing
+
+    if os.getenv("OTEL_SDK_DISABLED", "").strip().lower() in ("1", "true", "yes"):
+        warnings.warn(
+            "neurolinker: OTEL_SDK_DISABLED is set, so OpenTelemetry records "
+            "nothing and no trace reaches NeuroLinker. Unset it in this process "
+            "to track.",
+            stacklevel=2,
+        )
 
     exporter = OTLPSpanExporter(
         endpoint=f"{url}{_INGEST_PATH}",
         headers={"authorization": f"Bearer {token}", _TRACK_UID_HEADER: track_uid},
     )
-    processor = BatchSpanProcessor(exporter)
-
-    provider = trace.get_tracer_provider()
-    if isinstance(provider, TracerProvider):
-        provider.add_span_processor(processor)
-    else:
-        provider = TracerProvider()
-        provider.add_span_processor(processor)
-        trace.set_tracer_provider(provider)
-        if trace.get_tracer_provider() is not provider:
-            warnings.warn(
-                "neurolinker: a non-SDK OpenTelemetry tracer provider is already "
-                "installed and could not be replaced — NeuroLinker spans may not "
-                "be exported.",
-                stacklevel=2,
-            )
+    provider = _tracing.new_provider()
+    provider.add_span_processor(BatchSpanProcessor(exporter))
+    _tracing.swap_provider(provider)
 
     activated = _activate_instrumentors(provider, frameworks)
     if not activated and not manual:
@@ -108,8 +122,6 @@ def instrument(
             "them with instrument(..., frameworks=[...]).",
             stacklevel=2,
         )
-
-    _instrumented = True
     return provider
 
 

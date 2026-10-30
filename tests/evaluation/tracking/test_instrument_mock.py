@@ -5,29 +5,12 @@ import warnings
 import pytest
 
 from neurolinker_sdk import NeuroLinkerConfigError, instrument, record_query
+from neurolinker_sdk.evaluation.tracking import _tracing
 
 # These tests exercise the OpenTelemetry emit path; skip cleanly if the tracking
 # extra is not installed in the environment.
 pytest.importorskip("opentelemetry")
 pytest.importorskip("openinference.semconv")
-
-
-@pytest.fixture()
-def exporter():
-    """A fresh in-memory span exporter installed as THE process tracer provider.
-
-    Sets ``_TRACER_PROVIDER`` directly (bypassing OTel's set-once guard) so each
-    test gets a clean provider regardless of what other tests configured."""
-    import opentelemetry.trace as trace_api
-    from opentelemetry.sdk.trace import TracerProvider
-    from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-    from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
-
-    exp = InMemorySpanExporter()
-    provider = TracerProvider()
-    provider.add_span_processor(SimpleSpanProcessor(exp))
-    trace_api._TRACER_PROVIDER = provider
-    return exp
 
 
 def _by_kind(exp):
@@ -76,20 +59,17 @@ def test_record_query_rejects_empty_user_input() -> None:
             pass
 
 
-def test_instrument_attaches_to_existing_provider_and_is_idempotent(exporter) -> None:
+def test_instrument_uses_its_own_provider_and_is_idempotent() -> None:
     import opentelemetry.trace as trace_api
 
-    # `_instrumented` is a module global; reach it via the function's globals
-    # (the submodule name is shadowed by the re-exported `instrument` function).
-    instrument.__globals__["_instrumented"] = False
-    existing = trace_api.get_tracer_provider()
-
+    global_before = trace_api.get_tracer_provider()
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")  # ignore the "no instrumentor" notice
         provider = instrument(track_uid="t", api_key="k", base_url="http://dummy.invalid")
 
-    # Coexistence: we attach to the already-installed provider, never replace it.
-    assert provider is existing
+    # The app's process-wide provider is never touched or replaced.
+    assert trace_api.get_tracer_provider() is global_before
+    assert provider is not global_before
 
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
@@ -98,19 +78,26 @@ def test_instrument_attaches_to_existing_provider_and_is_idempotent(exporter) ->
     assert any("already called" in str(w.message) for w in caught)
 
 
-def test_manual_flag_silences_no_instrumentor_warning(exporter) -> None:
+def test_manual_flag_silences_no_instrumentor_warning() -> None:
     """``frameworks=[]`` forces "nothing activated" regardless of what's installed,
     so we can assert the manual flag's effect on the warning deterministically."""
     # manual=True → no "no instrumentor" warning
-    instrument.__globals__["_instrumented"] = False
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         instrument(track_uid="t", api_key="k", base_url="http://x", frameworks=[], manual=True)
     assert not any("no OpenInference instrumentor" in str(w.message) for w in caught)
 
     # manual=False (default) → it DOES warn when nothing is activated
-    instrument.__globals__["_instrumented"] = False
+    _tracing.swap_provider(None)
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         instrument(track_uid="t", api_key="k", base_url="http://x", frameworks=[], manual=False)
     assert any("no OpenInference instrumentor" in str(w.message) for w in caught)
+
+
+def test_instrument_warns_when_the_otel_sdk_is_disabled(monkeypatch) -> None:
+    monkeypatch.setenv("OTEL_SDK_DISABLED", "true")
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        instrument(track_uid="t", api_key="k", base_url="http://x", frameworks=[], manual=True)
+    assert any("OTEL_SDK_DISABLED" in str(w.message) for w in caught)

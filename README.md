@@ -679,7 +679,9 @@ neurolinker_sdk.instrument(track_uid="<track_uid>")
 Your framework's calls are now traced **automatically**. Notes:
 
 - In a pre-forking server (gunicorn/uvicorn with workers), call `instrument()` **after** the fork (e.g. a post-fork hook), so the exporter thread lives in each worker.
-- If your app already runs OpenTelemetry, NeuroLinker **attaches** to it (spans reach both backends) rather than replacing it. The call is idempotent.
+- NeuroLinker uses a tracer provider **of its own**: only OpenInference spans (your framework's instrumentor, `record_query`, `@retriever`) are sent to NeuroLinker. An OpenTelemetry setup your app already has is left untouched, and its own spans (HTTP, database) never reach NeuroLinker. The call is idempotent.
+- The two traces stay apart: a NeuroLinker span never nests under one of your app's spans (under an HTTP request span it starts a new trace, since NeuroLinker scores each trace from its root), and your app's spans opened during a `record_query`, a `continue_trace` or an `@retriever` search keep their own parent, so your APM's traces are unchanged. One exception is outside the SDK's control: OpenInference instrumentors make their own spans OpenTelemetry's current span, so an app span opened inside a framework call they trace (an HTTP call made by the LLM client, for example) has that span as its parent, which your APM never receives.
+- `OTEL_SDK_DISABLED=true` turns all OpenTelemetry recording off, NeuroLinker's included; `instrument()` warns when it is set.
 - A short-lived script should call `provider.force_flush()` (on the returned provider) before exiting, so the last spans are sent.
 
 **Custom RAG with no framework instrumentor.** Install `[tracking]` and wrap each query, handing over the pieces explicitly:
@@ -701,6 +703,44 @@ with record_query(user_input=question) as q:
     )
 ```
 
+**Agents: first input, final output.** In an agent, what happens between the user's message and the final output varies (LLM-written sub-queries, tools, sub-agents), but the start and the end are known to your code. Mark them with the same `record_query`: wrap one user turn, pass the user's own words (not the prompt built around them) and record the final output. Every search traced with `@retriever` during the turn counts as its context, and NeuroLinker scores the turn's question, its retrieved documents and its answer:
+
+```python
+with record_query(user_input=user_message) as q:
+    final_text = await run_agent(prompt_with_session_context)
+    q.set_response(final_text)
+```
+
+The query span is the root of its trace, so the turn is scored as one query wherever your code opens it, also inside a request your APM traces.
+
+**Searches in another service.** When the searches run in another process, such as an MCP server the agent calls, carry the trace across: send `q.trace_headers()` with the calls, and wrap the work of each incoming request in `continue_trace(headers)` on the other side. Both processes call `instrument()` with the **same track**.
+
+```python
+# Agent side: every call to the search service carries the query's trace.
+with record_query(user_input=user_message) as q:
+    async with httpx.AsyncClient(headers=q.trace_headers()) as http:
+        ...
+
+# Service side: the searches join the caller's query.
+from neurolinker_sdk import continue_trace
+
+with continue_trace(request.headers):
+    results = vector_search(query)
+```
+
+The header is `neurolinker-traceparent` (W3C trace-context format), separate from the standard `traceparent` so it never mixes with your app's own tracing. Without it, `continue_trace` does nothing and each search is a trace of its own, scored on its own. If the caller's query never reaches the track, its searches are never scored, so send the header only from a process that tracks.
+
+**Test your instrumentation.** `capture_spans()` records NeuroLinker spans in memory instead of sending them:
+
+```python
+from neurolinker_sdk.evaluation.tracking import capture_spans
+
+with capture_spans() as spans:
+    vector_search("calibration interval")
+(span,) = spans.get_finished_spans()
+assert span.attributes["input.value"] == "calibration interval"
+```
+
 **Searches your framework does not trace (`@retriever`).** Every search is also scored on its own: the query against the documents it returned (`context_relevance` for the set, plus a relevance per document). Framework retrievers (LangChain, LlamaIndex, ...) emit these spans automatically. When your code calls the vector DB directly, or the search runs in a separate service such as an MCP server, decorate the function that runs it, in the process that runs it:
 
 ```python
@@ -718,10 +758,29 @@ def vector_search(query: str, top_k: int = 10):
 
 - `to_documents` maps your search result to strings or `RetrievedDocument`s; without it, the function must already return strings. Your function's return value is passed through unchanged, and tracing never breaks the search.
 - The query is the parameter named `query`, else the first one; pass `query_arg="..."` otherwise.
-- Works on sync and async functions. Standalone, each call is its own trace (scored as a search). Inside `record_query(...)`, the span is also that query's context.
-- No trace-context propagation is needed for search scores: the span carries both the query and the documents.
+- Works on sync and async functions. Standalone, each call is its own trace (scored as a search). Inside `record_query(...)`, or inside `continue_trace(...)` in a service the query called, the span is also that query's context.
+- No trace-context propagation is needed for search scores: the span carries both the query and the documents. Propagation only adds the search to its query's contexts.
 
-**Scope.** A track scores both levels by default (`scope="queries_and_retrievals"`). For a system whose root span is not a question and answer, such as an agent that automates a workflow and searches a knowledge base along the way, score searches only: `tracks.create(name=..., scope="retrievals_only")` or `tracks.set_scope(track_uid, scope="retrievals_only")`.
+Tell NeuroLinker how to read the result, and attach the context of the call:
+
+```python
+@retriever(
+    ranked=True,                                     # order = relevance: scores hit@1, MRR, nDCG
+    metadata=lambda args: {"filter_expression": args["filter_expression"]},
+    to_documents=to_docs,
+)
+def vector_search(query: str, filter_expression: str | None = None): ...
+
+@retriever(ranked=False, to_documents=to_docs)      # filter-only lookup: scored as a set
+def lookup(query: str | None = None, filter_expression: str = ""): ...
+```
+
+- `ranked`: does the order of the documents reflect relevance to the query? `True` for vector, keyword, hybrid or reranked search; `False` for filter-only lookups or results ordered by anything else (date, price). Left out, NeuroLinker infers it from the document scores. Ranking metrics are only computed for ranked searches.
+- `metadata`: a dict, or a function of the call's arguments by parameter name, recorded as the span's OpenInference `metadata` (JSON). Use it for the filter expression, the collection, `top_k`.
+- A call whose query is `None` is still recorded (document count, latency, metadata) but not judged: there is no question to judge the documents against.
+- `max_documents` (default `50`) caps the documents recorded on the span; the true count is always sent. The SDK also never records more than fit in the span's attribute limit (OpenTelemetry's `OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT`, default `128`, about 40 documents with id and score): past it, OpenTelemetry would evict the span's kind and query, and the search would silently vanish. It warns when the limit cuts the list; raise the limit to record more.
+
+**Scope.** A track scores both levels by default (`scope="queries_and_retrievals"`). An agent that wraps its turns in `record_query` scores like any RAG. For a system whose root span is not a question and answer and that does not mark one, such as an automation that searches a knowledge base along the way, score searches only: `tracks.create(name=..., scope="retrievals_only")` or `tracks.set_scope(track_uid, scope="retrievals_only")`.
 
 **Read the dashboard.**
 
@@ -735,7 +794,7 @@ The per-query rows a track has accumulated (input/output, metrics, latency), mos
 Drill-down for one query — adds the retrieved contexts, model and token counts.
 
 - `client.evaluation.tracking.retrievals(track_uid, limit=100)` / `.retrieval(track_uid, span_id)`
-The per-search rows (query, document count, `context_relevance`, `relevant_document_ratio`, latency), most recent first; the drill-down adds each judged document with its relevance.
+The per-search rows (query, document count, `ranked`, `k`, metadata, latency, and the metrics: `context_relevance` and `relevant_document_ratio` for every judged search, plus `hit_at_1`, `reciprocal_rank` and `ndcg` for ranked ones), most recent first; the drill-down adds each judged document with its position and relevance. A ranked search is judged on its top `k` documents, an unranked one on a random sample of `k`.
 
 ```python
 with NeuroLinker.from_env() as client:
