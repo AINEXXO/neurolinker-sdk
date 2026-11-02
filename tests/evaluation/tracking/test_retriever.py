@@ -168,6 +168,35 @@ def test_ranked_is_recorded_only_when_given(exporter) -> None:
     assert ranked == [True, False, None]
 
 
+def test_search_type_is_recorded_only_when_given(exporter) -> None:
+    @retriever(search_type="vector")
+    def vector(query):
+        return ["a"]
+
+    @retriever(search_type="filter", query_arg="filter_expression")
+    def lookup(filter_expression):
+        return ["a"]
+
+    @retriever
+    def unknown(query):
+        return ["a"]
+
+    vector("q")
+    lookup("product_name LIKE 'PSD%'")
+    unknown("q")
+    spans = exporter.get_finished_spans()
+    types = [s.attributes.get("neurolinker.retrieval.search_type") for s in spans]
+    assert types == ["vector", "filter", None]
+    # A filter search can still record its filter expression as input.value.
+    assert spans[1].attributes["input.value"] == "product_name LIKE 'PSD%'"
+
+
+@pytest.mark.parametrize("bad", ["Vector", "keyword", "", 1])
+def test_unknown_search_type_is_a_config_error(bad) -> None:
+    with pytest.raises(NeuroLinkerConfigError, match="search_type"):
+        retriever(search_type=bad)
+
+
 def test_metadata_from_mapping_and_from_call_arguments(exporter) -> None:
     import json
 
