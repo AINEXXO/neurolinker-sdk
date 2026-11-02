@@ -5,15 +5,20 @@ import inspect
 import json
 import warnings
 from dataclasses import dataclass
-from typing import Any, Callable, Iterable, Mapping, Optional, TypeVar, Union
+from typing import Any, Callable, Iterable, Literal, Mapping, Optional, TypeVar, Union
 
 from ...errors import NeuroLinkerConfigError
 from . import _tracing
 
 # NeuroLinker's own retrieval attributes. OpenInference has no attribute for
-# "does the order mean relevance" or for the result size before truncation.
+# "does the order mean relevance", for the kind of search (vector or filter),
+# or for the result size before truncation.
 RANKED_ATTR = "neurolinker.retrieval.ranked"
+SEARCH_TYPE_ATTR = "neurolinker.retrieval.search_type"
 DOCUMENT_COUNT_ATTR = "neurolinker.retrieval.document_count"
+
+SearchType = Literal["vector", "filter"]
+SEARCH_TYPES: tuple[str, ...] = ("vector", "filter")
 
 # Default cap on the documents recorded per span. Each document costs up to
 # three span attributes (content, id, score), so this also bounds span size.
@@ -51,6 +56,7 @@ def retriever(
     query_arg: Optional[str] = None,
     name: Optional[str] = None,
     ranked: Optional[bool] = None,
+    search_type: Optional[SearchType] = None,
     metadata: Optional[MetadataLike] = None,
     max_documents: int = DEFAULT_MAX_DOCUMENTS,
 ) -> Any:
@@ -78,13 +84,22 @@ def retriever(
     :func:`continue_trace` in a service the query called: the span then also
     counts as that query's context.
 
+    Vector or filter search: a **vector search** (vector, keyword or hybrid)
+    has a query text and is judged against it. A **filter search** (a SQL
+    ``WHERE``, a scalar filter, a metadata lookup, whatever the tool is called)
+    has no question of its own, so NeuroLinker judges its documents against
+    the question of the trace it ran in (the root span's ``input.value``,
+    e.g. a :func:`record_query` turn), and a filter search outside such a
+    trace is recorded (count, latency, metadata) but not judged. Pass
+    ``search_type`` to say which it is; left out, a call with a query is a
+    vector search and one whose query is ``None`` is a filter search. State it
+    when the query parameter of a filter search holds the filter expression.
+
     Ranked or not: a vector, keyword or hybrid search returns documents in
     relevance order, so NeuroLinker can score the ranking (hit at 1, MRR,
-    nDCG). A filter-only lookup (a SQL ``WHERE``, a scalar filter, or results
-    ordered by date or price) has no relevance order; pass ``ranked=False`` and
-    NeuroLinker scores it as a set. A lookup with no natural-language query can
-    pass ``query_arg`` pointing to a parameter that is ``None``: the span is
-    then recorded (count, latency, metadata) but not judged.
+    nDCG). A filter search, or results ordered by date or price, has no
+    relevance order; pass ``ranked=False`` and NeuroLinker scores it as a set.
+    Rank metrics are only computed for a ranked vector search.
 
     Span size: at most ``max_documents`` documents are recorded, and never more
     than fit in the span's attribute limit (OpenTelemetry's
@@ -107,6 +122,10 @@ def retriever(
             search; ``False`` for filter-only lookups or results ordered by
             anything else. Default ``None``: not sent, NeuroLinker infers it
             from the document scores.
+        search_type: ``"vector"`` (judged against its own query) or
+            ``"filter"`` (judged against its trace's question). Default
+            ``None``: not sent, NeuroLinker infers it from whether the call
+            has a query.
         metadata: Extra context recorded on the span as OpenInference
             ``metadata`` (JSON), such as the filter expression or the
             collection. Either a mapping, or a function that receives the
@@ -120,12 +139,17 @@ def retriever(
 
     Raises:
         NeuroLinkerConfigError: ``query_arg`` does not name a parameter of the
-            decorated function, the function takes no parameters, or
+            decorated function, the function takes no parameters,
+            ``search_type`` is not ``"vector"``, ``"filter"`` or ``None``, or
             ``max_documents`` is negative or not an int.
     """
     if isinstance(max_documents, bool) or not isinstance(max_documents, int) or max_documents < 0:
         raise NeuroLinkerConfigError(
             f"retriever: max_documents must be an int >= 0, got {max_documents!r}."
+        )
+    if search_type is not None and search_type not in SEARCH_TYPES:
+        raise NeuroLinkerConfigError(
+            f"retriever: search_type must be 'vector', 'filter' or None, got {search_type!r}."
         )
 
     def decorate(fn: F) -> F:
@@ -150,6 +174,7 @@ def retriever(
                 span_name,
                 None if query is None else str(query),
                 ranked=ranked,
+                search_type=search_type,
                 metadata=_resolve_metadata(metadata, arguments, span_name),
                 max_documents=max_documents,
             )
@@ -330,6 +355,7 @@ class _RetrieverSpan:
         query: Optional[str],
         *,
         ranked: Optional[bool] = None,
+        search_type: Optional[SearchType] = None,
         metadata: Optional[str] = None,
         max_documents: int = DEFAULT_MAX_DOCUMENTS,
     ) -> None:
@@ -340,12 +366,14 @@ class _RetrieverSpan:
             query: The search query, if known.
             ranked: Whether the document order reflects relevance (``None``:
                 not recorded).
+            search_type: ``"vector"`` or ``"filter"`` (``None``: not recorded).
             metadata: Metadata as a JSON object string, if any.
             max_documents: The most documents to record.
         """
         self._span_name = span_name
         self._query = query
         self._ranked = ranked
+        self._search_type = search_type
         self._metadata = metadata
         self._max_documents = max_documents
         self._cm: Any = None
@@ -375,6 +403,8 @@ class _RetrieverSpan:
             span.set_attribute(SpanAttributes.INPUT_VALUE, self._query)
         if self._ranked is not None:
             span.set_attribute(RANKED_ATTR, bool(self._ranked))
+        if self._search_type is not None:
+            span.set_attribute(SEARCH_TYPE_ATTR, self._search_type)
         if self._metadata is not None:
             span.set_attribute(SpanAttributes.METADATA, self._metadata)
 

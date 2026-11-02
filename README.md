@@ -741,7 +741,7 @@ with capture_spans() as spans:
 assert span.attributes["input.value"] == "calibration interval"
 ```
 
-**Searches your framework does not trace (`@retriever`).** Every search is also scored on its own: the query against the documents it returned (`context_relevance` for the set, plus a relevance per document). Framework retrievers (LangChain, LlamaIndex, ...) emit these spans automatically. When your code calls the vector DB directly, or the search runs in a separate service such as an MCP server, decorate the function that runs it, in the process that runs it:
+**Searches your framework does not trace (`@retriever`).** Every search is also scored on its own: a vector search's query, or a filter search's trace question, against the documents it returned (`context_relevance` for the set, plus a relevance per document). Framework retrievers (LangChain, LlamaIndex, ...) emit these spans automatically. When your code calls the vector DB directly, or the search runs in a separate service such as an MCP server, decorate the function that runs it, in the process that runs it:
 
 ```python
 from neurolinker_sdk import RetrievedDocument, instrument, retriever
@@ -771,13 +771,18 @@ Tell NeuroLinker how to read the result, and attach the context of the call:
 )
 def vector_search(query: str, filter_expression: str | None = None): ...
 
-@retriever(ranked=False, to_documents=to_docs)      # filter-only lookup: scored as a set
-def lookup(query: str | None = None, filter_expression: str = ""): ...
+@retriever(                                          # filter search: judged against the trace's question
+    search_type="filter",
+    ranked=False,                                    # no relevance order: scored as a set
+    query_arg="filter_expression",
+    to_documents=to_docs,
+)
+def query_search(filter_expression: str, collection: str = "manuals"): ...
 ```
 
-- `ranked`: does the order of the documents reflect relevance to the query? `True` for vector, keyword, hybrid or reranked search; `False` for filter-only lookups or results ordered by anything else (date, price). Left out, NeuroLinker infers it from the document scores. Ranking metrics are only computed for ranked searches.
+- `search_type`: `"vector"` or `"filter"`. A **vector search** (vector, keyword or hybrid) has a query text and is judged against it. A **filter search** (a scalar filter, a SQL `WHERE`, a metadata lookup, whatever the tool is called) has no question of its own, so its documents are judged against the question of the trace it ran in (the root span's input, e.g. the `record_query` turn); outside such a trace it is recorded (document count, latency, metadata) but not judged. Left out, a call with a query is a vector search and one whose query is `None` is a filter search. Set it when the query parameter of a filter search holds the filter expression, as above.
+- `ranked`: does the order of the documents reflect relevance to the query? `True` for vector, keyword, hybrid or reranked search; `False` for filter searches or results ordered by anything else (date, price). Left out, NeuroLinker infers it from the document scores. Ranking metrics are only computed for ranked vector searches.
 - `metadata`: a dict, or a function of the call's arguments by parameter name, recorded as the span's OpenInference `metadata` (JSON). Use it for the filter expression, the collection, `top_k`.
-- A call whose query is `None` is still recorded (document count, latency, metadata) but not judged: there is no question to judge the documents against.
 - `max_documents` (default `50`) caps the documents recorded on the span; the true count is always sent. The SDK also never records more than fit in the span's attribute limit (OpenTelemetry's `OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT`, default `128`, about 40 documents with id and score): past it, OpenTelemetry would evict the span's kind and query, and the search would silently vanish. It warns when the limit cuts the list; raise the limit to record more.
 
 **Scope.** A track scores both levels by default (`scope="queries_and_retrievals"`). An agent that wraps its turns in `record_query` scores like any RAG. For a system whose root span is not a question and answer and that does not mark one, such as an automation that searches a knowledge base along the way, score searches only: `tracks.create(name=..., scope="retrievals_only")` or `tracks.set_scope(track_uid, scope="retrievals_only")`.
@@ -794,7 +799,7 @@ The per-query rows a track has accumulated (input/output, metrics, latency), mos
 Drill-down for one query — adds the retrieved contexts, model and token counts.
 
 - `client.evaluation.tracking.retrievals(track_uid, limit=100)` / `.retrieval(track_uid, span_id)`
-The per-search rows (query, document count, `ranked`, `k`, metadata, latency, and the metrics: `context_relevance` and `relevant_document_ratio` for every judged search, plus `hit_at_1`, `reciprocal_rank` and `ndcg` for ranked ones), most recent first; the drill-down adds each judged document with its position and relevance. A ranked search is judged on its top `k` documents, an unranked one on a random sample of `k`.
+The per-search rows (`search_type`, query, what it was judged against, document count, `ranked`, `k`, metadata, latency, and the metrics: `context_relevance` and `relevant_document_ratio` for every judged search, plus `hit_at_1`, `reciprocal_rank` and `ndcg` for ranked vector searches), most recent first; the drill-down adds each judged document with its position and relevance. A ranked search is judged on its top `k` documents, an unranked one on a random sample of `k`.
 
 ```python
 with NeuroLinker.from_env() as client:
