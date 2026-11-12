@@ -761,6 +761,10 @@ def vector_search(query: str, top_k: int = 10):
 - Works on sync and async functions. Standalone, each call is its own trace (scored as a search). Inside `record_query(...)`, or inside `continue_trace(...)` in a service the query called, the span is also that query's context.
 - No trace-context propagation is needed for search scores: the span carries both the query and the documents. Propagation only adds the search to its query's contexts.
 
+See [Qdrant and Pinecone client integrations](docs/retriever-databases.md) for
+executable search wrappers, offline response-contract tests and live validation
+steps. These use the same database-agnostic decorator as the Milvus example above.
+
 Tell NeuroLinker how to read the result, and attach the context of the call:
 
 ```python
