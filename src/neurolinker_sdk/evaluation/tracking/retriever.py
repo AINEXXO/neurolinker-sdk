@@ -444,40 +444,56 @@ class _RetrieverSpan:
     def _documents_that_fit(
         self, span: Any, documents: list[RetrievedDocument]
     ) -> list[RetrievedDocument]:
-        """The leading documents that can be recorded without evicting anything.
+        """The documents that can be recorded without evicting anything.
 
         Capped by ``max_documents`` and by the attributes left under the span's
-        limit. Warns once per span name when the limit, not ``max_documents``,
-        forced the cut.
+        limit. A ranked search (or one whose ranking is unknown) keeps its
+        leading documents, the part the rank metrics are about. An unranked
+        search keeps an evenly spread sample instead: its rows come in storage
+        order, so the first ones can all come from one corner of the data.
+        Warns once per span name when the limit, not ``max_documents``, forced
+        the cut.
 
         Args:
             span: The current span (its other attributes already set).
             documents: All documents, in the order returned.
 
         Returns:
-            The documents to record, a prefix of ``documents``.
+            The documents to record, in the order returned.
         """
-        wanted = documents[: self._max_documents]
+        wanted = min(self._max_documents, len(documents))
         limit = _attribute_limit(span)
-        if limit is None:
-            return wanted
-        room = limit - _attribute_count(span)
-        fitting: list[RetrievedDocument] = []
-        for doc in wanted:
-            room -= _attributes_per_document(doc)
-            if room < 0:
-                break
-            fitting.append(doc)
-        if len(fitting) < len(wanted) and self._span_name not in self._warned_attribute_limit:
+        room = None if limit is None else limit - _attribute_count(span)
+        count = wanted
+        chosen = self._choose(documents, count)
+        while room is not None and sum(_attributes_per_document(d) for d in chosen) > room:
+            count -= 1
+            chosen = self._choose(documents, count)
+        if count < wanted and self._span_name not in self._warned_attribute_limit:
             _RetrieverSpan._warned_attribute_limit.add(self._span_name)
+            kept = "an evenly spread sample of" if self._ranked is False else "only the first"
             warnings.warn(
                 f"neurolinker: {self._span_name} returned {len(documents)} documents but "
-                f"only {len(fitting)} fit in the span's attribute limit ({limit}); the "
-                "rest are not recorded. Raise OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT, or lower "
+                f"only {count} fit in the span's attribute limit ({limit}); {kept} {count} "
+                "is recorded. Raise OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT, or lower "
                 "max_documents, to record them all.",
                 stacklevel=3,
             )
-        return fitting
+        return chosen
+
+    def _choose(self, documents: list[RetrievedDocument], count: int) -> list[RetrievedDocument]:
+        """``count`` documents: the leading ones, or evenly spread when unranked.
+
+        Args:
+            documents: All documents, in the order returned.
+            count: How many to keep, at most ``len(documents)``.
+
+        Returns:
+            The kept documents, in the order returned.
+        """
+        if self._ranked is not False or count >= len(documents):
+            return documents[:count]
+        return [documents[i * len(documents) // count] for i in range(count)]
 
     def __exit__(self, *exc_info: Any) -> Any:
         """End the span; an exception from the search is recorded on it and re-raised.

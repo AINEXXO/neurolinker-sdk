@@ -266,6 +266,42 @@ def test_documents_never_evict_the_span_kind_or_query() -> None:
     assert any("fit in the span's attribute limit (20)" in str(w.message) for w in caught)
 
 
+def test_unranked_search_over_max_documents_records_an_evenly_spread_sample(exporter) -> None:
+    """A filter search's rows are in storage order: the first ones can all come from
+    one corner of the data, so a cut keeps rows spread over the whole result."""
+
+    @retriever(ranked=False, max_documents=3, to_documents=lambda rows: [
+        RetrievedDocument(content=f"doc {i}", id=str(i)) for i in rows])
+    def lookup(query=None):
+        return list(range(9))
+
+    lookup()
+    attrs = _only_span(exporter).attributes
+    assert attrs["neurolinker.retrieval.document_count"] == 9
+    assert _recorded_contents(attrs) == ["doc 0", "doc 3", "doc 6"]
+    assert [attrs[f"retrieval.documents.{i}.document.id"] for i in range(3)] == ["0", "3", "6"]
+
+
+def test_unranked_search_over_the_attribute_limit_records_an_evenly_spread_sample() -> None:
+    from opentelemetry.sdk.trace import SpanLimits
+
+    @retriever(ranked=False, to_documents=lambda rows: [
+        RetrievedDocument(content=f"doc {i}", id=str(i), score=0.5) for i in rows])
+    def lookup(query=None):
+        return list(range(30))
+
+    with capture_spans(span_limits=SpanLimits(max_span_attributes=20)) as exporter:
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            lookup()
+    attrs = _only_span(exporter).attributes
+    # kind + ranked + count = 3 attributes; 17 left = 5 documents of 3 attributes each
+    assert attrs["neurolinker.retrieval.document_count"] == 30
+    assert _recorded_contents(attrs) == [f"doc {i}" for i in (0, 6, 12, 18, 24)]
+    assert len(attrs) <= 20
+    assert any("evenly spread sample" in str(w.message) for w in caught)
+
+
 def test_search_without_a_query_is_still_recorded(exporter) -> None:
     @retriever(ranked=False)
     def lookup(query=None, filter_expression=""):
